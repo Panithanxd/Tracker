@@ -235,6 +235,103 @@
     .budget-row:last-child{border-bottom:none;}
     .budget-name{color:var(--muted2);}
     .budget-price{font-family:var(--mono);}
+  
+    /* ══ RESPONSIVE / MOBILE ══ */
+    @media (max-width: 768px) {
+      :root { --sidebar: 0px; }
+
+      .app { display: block; }
+
+      /* Sidebar กลายเป็น bottom nav */
+      .sidebar {
+        position: fixed; bottom: 0; left: 0; right: 0; top: auto;
+        height: auto; width: 100%;
+        display: flex; flex-direction: column;
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+        border-right: none;
+        padding: 0; z-index: 150;
+      }
+      .logo { display: none; }
+      .nav-group { display: none; }
+      .sidebar > div:not(.logo):not([class^="nav-group"]) { display: none; }
+
+      /* nav items เรียงแนวนอน */
+      .sidebar { flex-direction: row; overflow-x: auto; }
+      .nav-item {
+        flex-direction: column; gap: 3px; padding: 8px 12px;
+        font-size: 10px; border-left: none;
+        border-top: 2px solid transparent;
+        white-space: nowrap; min-width: 64px;
+        justify-content: center; align-items: center;
+      }
+      .nav-item.active {
+        border-left: none; border-top-color: var(--green);
+        background: var(--green-dim);
+      }
+      .nav-dot { width: 16px; height: 16px; border-radius: 4px; background: currentColor; opacity: 0.7; }
+
+      /* main */
+      .main { padding: 16px 12px 80px; }
+
+      /* grids */
+      .grid4 { grid-template-columns: 1fr 1fr; }
+      .grid3 { grid-template-columns: 1fr 1fr; }
+      .grid2 { grid-template-columns: 1fr; }
+
+      /* score card */
+      .score-card { flex-direction: column; text-align: center; gap: 12px; }
+
+      /* charts */
+      .chart-box { height: 160px; }
+
+      /* forms */
+      .form-row { flex-direction: column; }
+      .form-row input, .form-row select { width: 100% !important; }
+
+      /* table horizontal scroll */
+      .table-wrap { overflow-x: auto; }
+      table { min-width: 480px; }
+
+      /* modal */
+      .modal { width: 95vw; padding: 20px 16px; }
+
+      /* fab */
+      .fab { bottom: 72px; right: 16px; padding: 12px 18px; font-size: 13px; }
+
+      /* stat card */
+      .stat-val { font-size: 16px; }
+
+      /* ach grid */
+      .ach-grid { grid-template-columns: 1fr 1fr; }
+
+      /* workout */
+      .workout-today { padding: 14px; }
+
+      /* streak dots smaller */
+      .streak-dot { width: 22px; height: 22px; font-size: 9px; }
+
+      /* page title */
+      .page-title { font-size: 18px; }
+
+      /* meal */
+      .meal-inner { padding: 12px; }
+
+      /* shake form */
+      #s-milk, #s-banana, #s-oat, #s-pb { width: 100% !important; }
+
+      /* day schedule */
+      .day-row { grid-template-columns: 70px 1fr; gap: 8px; }
+
+      /* macro row */
+      .macro-row { gap: 8px; }
+      .macro-pill { padding: 6px 10px; }
+    }
+
+    @media (max-width: 400px) {
+      .grid4 { grid-template-columns: 1fr 1fr; }
+      .nav-item { padding: 8px 8px; min-width: 52px; font-size: 9px; }
+    }
   </style>
 </head>
 <body>
