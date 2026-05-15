@@ -1236,6 +1236,34 @@
           <span class="nav-dot"></span>Achievements
         </div>
       </aside>
+      <!-- Mobile Finance Link -->
+      <style>
+        .finance-fab {
+          display: none;
+        }
+        @media (max-width: 768px) {
+          .finance-fab {
+            display: flex;
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 200;
+            align-items: center;
+            gap: 5px;
+            background: var(--blue-dim);
+            border: 1px solid rgba(59,130,246,0.3);
+            color: var(--blue);
+            text-decoration: none;
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            letter-spacing: 0.05em;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+          }
+        }
+      </style>
+      <a href="cash.html" class="finance-fab">💰 Finance</a>
 
       <!-- ══ MAIN ══ -->
       <main class="main">
