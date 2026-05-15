@@ -1,1119 +1,2758 @@
 <!doctype html>
 <html lang="th">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Weight Tracker — Panithan</title>
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <style>
-    :root {
-      --bg:#0d0d0f; --surface:#16161a; --surface2:#1e1e24; --surface3:#25252d;
-      --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
-      --green:#22c55e; --green-dim:rgba(34,197,94,0.12); --green-glow:rgba(34,197,94,0.25);
-      --blue:#3b82f6; --blue-dim:rgba(59,130,246,0.12);
-      --amber:#f59e0b; --amber-dim:rgba(245,158,11,0.12);
-      --purple:#a78bfa; --purple-dim:rgba(167,139,250,0.12);
-      --red:#ef4444; --red-dim:rgba(239,68,68,0.12);
-      --text:#e8e8ec; --muted:#6b6b7a; --muted2:#9595a4;
-      --font:"Sarabun",sans-serif; --mono:"Space Mono",monospace;
-      --sidebar:220px;
-    }
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;min-height:100vh;}
-    .app{display:grid;grid-template-columns:var(--sidebar) 1fr;min-height:100vh;}
-
-    /* ── SIDEBAR ── */
-    .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto;}
-    .logo{padding:0 20px 20px;border-bottom:1px solid var(--border);margin-bottom:12px;}
-    .logo-title{font-family:var(--mono);font-size:13px;color:var(--green);letter-spacing:0.08em;}
-    .logo-sub{font-size:11px;color:var(--muted);margin-top:2px;}
-    .nav-group{padding:12px 20px 4px;font-size:10px;color:var(--muted);letter-spacing:0.1em;font-family:var(--mono);}
-    .nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;font-size:13px;color:var(--muted2);cursor:pointer;border-left:2px solid transparent;transition:all 0.15s;user-select:none;}
-    .nav-item:hover{color:var(--text);background:rgba(255,255,255,0.03);}
-    .nav-item.active{color:var(--green);border-left-color:var(--green);background:var(--green-dim);}
-    .nav-dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:0.5;flex-shrink:0;}
-
-    /* ── MAIN ── */
-    .main{padding:32px;overflow-x:hidden;}
-    .page{display:none;}
-    .page.active{display:block;}
-    .page-title{font-size:22px;font-weight:600;margin-bottom:4px;}
-    .page-sub{font-size:13px;color:var(--muted);margin-bottom:24px;}
-
-    /* ── CARDS ── */
-    .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;}
-    .card+.card{margin-top:16px;}
-    .card-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-family:var(--mono);margin-bottom:14px;}
-
-    /* ── GRID ── */
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
-    .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
-    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
-
-    /* ── STAT CARD ── */
-    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;}
-    .stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;}
-    .stat-val{font-family:var(--mono);font-size:20px;font-weight:700;line-height:1.2;}
-    .stat-sub{font-size:11px;color:var(--muted);margin-top:4px;}
-    .c-green{color:var(--green);} .c-blue{color:var(--blue);} .c-amber{color:var(--amber);} .c-red{color:var(--red);} .c-purple{color:var(--purple);}
-
-    /* ── SCORE RING ── */
-    .score-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;align-items:center;gap:20px;margin-bottom:16px;}
-    .score-ring{position:relative;width:80px;height:80px;flex-shrink:0;}
-    .score-ring svg{transform:rotate(-90deg);}
-    .score-ring-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:18px;font-weight:700;}
-    .score-info{flex:1;}
-    .score-title{font-size:16px;font-weight:600;margin-bottom:4px;}
-    .score-msg{font-size:12px;color:var(--muted2);line-height:1.6;}
-
-    /* ── PROGRESS BAR ── */
-    .prog-wrap{background:var(--surface2);border-radius:20px;height:6px;margin:8px 0;}
-    .prog-fill{height:100%;border-radius:20px;transition:width 0.4s;}
-
-    /* ── CHECKLIST ── */
-    .check-item{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity 0.15s;}
-    .check-item:last-child{border-bottom:none;}
-    .check-box{width:20px;height:20px;border:2px solid var(--border2);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
-    .check-item.done .check-box{background:var(--green);border-color:var(--green);}
-    .check-item.done .check-box::after{content:"✓";font-size:11px;color:#000;font-weight:700;}
-    .check-item.done .check-text{text-decoration:line-through;color:var(--muted);}
-    .check-text{font-size:13px;color:var(--muted2);flex:1;}
-    .check-time{font-family:var(--mono);font-size:10px;color:var(--muted);}
-
-    /* ── NEXT TASK ── */
-    .next-card{background:linear-gradient(135deg,var(--green-dim),rgba(59,130,246,0.08));border:1px solid rgba(34,197,94,0.2);border-radius:12px;padding:16px;margin-bottom:16px;}
-    .next-label{font-size:10px;color:var(--green);font-family:var(--mono);letter-spacing:0.1em;margin-bottom:6px;}
-    .next-title{font-size:15px;font-weight:600;margin-bottom:2px;}
-    .next-sub{font-size:12px;color:var(--muted2);}
-
-    /* ── RECOMMENDATION ── */
-    .rec-card{border-radius:10px;padding:12px 14px;margin-bottom:10px;font-size:13px;border-left:3px solid;}
-    .rec-warn{background:var(--amber-dim);border-color:var(--amber);color:#fcd34d;}
-    .rec-info{background:var(--blue-dim);border-color:var(--blue);color:#93c5fd;}
-    .rec-good{background:var(--green-dim);border-color:var(--green);color:#4ade80;}
-    .rec-bad{background:var(--red-dim);border-color:var(--red);color:#f87171;}
-    .rec-label{font-size:10px;font-family:var(--mono);letter-spacing:0.08em;opacity:0.8;margin-bottom:3px;}
-
-    /* ── FORM ── */
-    .form-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
-    .field{display:flex;flex-direction:column;gap:5px;}
-    .field label{font-size:12px;color:var(--muted);}
-    input[type="date"],input[type="number"],input[type="text"],select{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:9px 12px;font-size:13px;font-family:var(--font);outline:none;transition:border 0.15s;}
-    input:focus,select:focus{border-color:var(--green);}
-    select option{background:var(--surface2);}
-    .btn{padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-family:var(--font);font-weight:500;transition:all 0.15s;}
-    .btn-green{background:var(--green);color:#000;}
-    .btn-green:hover{background:#16a34a;}
-    .btn-sm{padding:5px 12px;font-size:12px;}
-    .btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border2);}
-    .btn-ghost:hover{border-color:var(--green);color:var(--green);}
-
-    /* ── TABLE ── */
-    .table-wrap{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
-    table{width:100%;border-collapse:collapse;font-size:13px;}
-    th{background:var(--surface2);padding:10px 14px;text-align:left;font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid var(--border);}
-    td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);}
-    tr:last-child td{border-bottom:none;}
-    .del-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:2px 6px;border-radius:4px;}
-    .del-btn:hover{color:var(--red);}
-
-    /* ── BADGE ── */
-    .badge{font-size:11px;padding:2px 8px;border-radius:20px;display:inline-block;font-family:var(--mono);}
-    .badge-up{background:rgba(34,197,94,0.15);color:#4ade80;}
-    .badge-dn{background:rgba(239,68,68,0.15);color:#f87171;}
-    .badge-eq{background:var(--surface2);color:var(--muted);}
-    .badge-push{background:rgba(139,92,246,0.15);color:#a78bfa;}
-    .badge-leg{background:rgba(34,197,94,0.15);color:#4ade80;}
-    .badge-pull{background:rgba(245,158,11,0.15);color:#fbbf24;}
-    .badge-full{background:rgba(239,68,68,0.15);color:#f87171;}
-    .badge-rest{background:var(--surface2);color:var(--muted);}
-
-    /* ── CHART ── */
-    .chart-box{position:relative;height:200px;margin-top:16px;}
-
-    /* ── WORKOUT ── */
-    .workout-today{background:linear-gradient(135deg,var(--purple-dim),var(--surface));border:1px solid rgba(167,139,250,0.2);border-radius:12px;padding:20px;margin-bottom:16px;}
-    .ex-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;}
-    .ex-item:last-child{border-bottom:none;}
-    .ex-sets{font-family:var(--mono);font-size:11px;color:var(--green);}
-    .ex-done{color:var(--muted);text-decoration:line-through;}
-    .ex-check{width:22px;height:22px;border:2px solid var(--border2);border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;}
-    .ex-check.done{background:var(--purple);border-color:var(--purple);}
-    .ex-check.done::after{content:"✓";font-size:11px;color:#fff;font-weight:700;}
-
-    /* ── ACHIEVEMENT ── */
-    .ach-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
-    .ach-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;}
-    .ach-card.unlocked{border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.05);}
-    .ach-icon{font-size:28px;margin-bottom:6px;}
-    .ach-name{font-size:12px;font-weight:500;margin-bottom:2px;}
-    .ach-desc{font-size:11px;color:var(--muted);}
-    .ach-card.locked .ach-icon{filter:grayscale(1);opacity:0.3;}
-    .ach-card.locked .ach-name{color:var(--muted);}
-
-    /* ── STREAK ── */
-    .streak-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
-    .streak-dot{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-family:var(--mono);}
-    .streak-dot.hit{background:var(--green-dim);border:1px solid rgba(34,197,94,0.3);color:var(--green);}
-    .streak-dot.miss{background:var(--surface2);border:1px solid var(--border);color:var(--muted);}
-    .streak-dot.today{border:2px solid var(--green);}
-
-    /* ── MEAL ── */
-    .meal-block{margin-bottom:16px;}
-    .meal-time-label{font-size:10px;font-family:var(--mono);color:var(--green);letter-spacing:0.08em;margin-bottom:6px;text-transform:uppercase;}
-    .meal-inner{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;}
-    .meal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-    .meal-name{font-weight:500;font-size:14px;}
-    .kcal-tag{font-family:var(--mono);font-size:11px;background:var(--green-dim);color:var(--green);padding:3px 10px;border-radius:20px;}
-    .meal-list{list-style:none;}
-    .meal-list li{font-size:13px;color:var(--muted2);padding:3px 0;display:flex;gap:8px;}
-    .meal-list li::before{content:"--";color:var(--green);}
-    .shake-inner{border-color:rgba(34,197,94,0.3);background:rgba(34,197,94,0.04);}
-    .tip-box{background:var(--blue-dim);border-left:2px solid var(--blue);border-radius:6px;padding:8px 12px;margin-top:10px;font-size:12px;color:#93c5fd;}
-
-    /* ── KBAR ── */
-    .kbar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12px;}
-    .kbar-label{width:90px;color:var(--muted);flex-shrink:0;}
-    .kbar-track{flex:1;background:var(--surface2);border-radius:20px;height:7px;}
-    .kbar-fill{height:100%;border-radius:20px;}
-    .kbar-num{width:50px;text-align:right;font-family:var(--mono);font-size:11px;color:var(--muted2);}
-
-    /* ── SHAKE CALC ── */
-    .shake-result{background:var(--green-dim);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:14px;margin-top:12px;}
-    .macro-row{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;}
-    .macro-pill{background:var(--surface2);border-radius:8px;padding:8px 14px;text-align:center;}
-    .macro-val{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--green);}
-    .macro-label{font-size:10px;color:var(--muted);margin-top:2px;}
-
-    /* ── FAB ── */
-    .fab{position:fixed;bottom:28px;right:28px;background:var(--green);color:#000;border:none;border-radius:50px;padding:14px 22px;font-size:14px;font-family:var(--font);font-weight:600;cursor:pointer;box-shadow:0 4px 20px var(--green-glow);display:flex;align-items:center;gap:8px;z-index:100;transition:all 0.2s;}
-    .fab:hover{background:#16a34a;transform:translateY(-2px);box-shadow:0 6px 24px var(--green-glow);}
-
-    /* ── MODAL ── */
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;}
-    .modal-overlay.open{display:flex;}
-    .modal{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:28px;width:360px;max-width:90vw;}
-    .modal-title{font-size:18px;font-weight:600;margin-bottom:6px;}
-    .modal-sub{font-size:12px;color:var(--muted);margin-bottom:20px;}
-    .modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;}
-    .modal .form-row{flex-direction:column;margin-bottom:14px;}
-    .modal .form-row .field{width:100%;}
-    .modal .form-row input{width:100%;}
-    .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
-
-    /* ── DIVIDER ── */
-    .divider{height:1px;background:var(--border);margin:16px 0;}
-
-    /* ── TREND ARROW ── */
-    .trend{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:12px;padding:3px 10px;border-radius:20px;}
-    .trend-up{background:rgba(34,197,94,0.15);color:#4ade80;}
-    .trend-dn{background:rgba(239,68,68,0.15);color:#f87171;}
-    .trend-eq{background:var(--surface2);color:var(--muted);}
-
-    /* ── EMPTY STATE ── */
-    .empty{text-align:center;padding:40px 20px;color:var(--muted);}
-    .empty-icon{font-size:36px;margin-bottom:10px;}
-    .empty-title{font-size:15px;font-weight:500;color:var(--muted2);margin-bottom:6px;}
-    .empty-sub{font-size:13px;}
-
-    /* ── DAY SCHEDULE ── */
-    .day-row{display:grid;grid-template-columns:90px 1fr;gap:14px;align-items:start;padding:14px 0;border-bottom:1px solid var(--border);}
-    .day-row:last-child{border-bottom:none;}
-    .day-name{font-family:var(--mono);font-size:12px;font-weight:700;padding-top:3px;}
-    .day-type{font-size:11px;color:var(--muted);margin-top:3px;}
-
-    /* ── RULES ── */
-    .rule-item{display:flex;gap:16px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--border);}
-    .rule-item:last-child{border-bottom:none;}
-    .rule-num{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--green);min-width:30px;}
-    .rule-body{font-size:13px;line-height:1.7;color:var(--muted2);}
-    .rule-body strong{color:var(--text);font-weight:500;}
-
-    /* ── BUDGET ── */
-    .budget-row{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);font-size:13px;}
-    .budget-row:last-child{border-bottom:none;}
-    .budget-name{color:var(--muted2);}
-    .budget-price{font-family:var(--mono);}
-  
-    /* ══ RESPONSIVE / MOBILE ══ */
-    @media (max-width: 768px) {
-      :root { --sidebar: 0px; }
-
-      .app { display: block; }
-
-      /* Sidebar กลายเป็น bottom nav bar */
-      .sidebar {
-        position: fixed;
-        bottom: 0; left: 0; right: 0; top: auto;
-        height: 60px;
-        width: 100%;
-        display: flex !important;
-        flex-direction: row;
-        overflow-x: auto;
-        overflow-y: hidden;
-        background: var(--surface);
-        border-top: 1px solid var(--border);
-        border-right: none;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Weight Tracker — Panithan</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+      :root {
+        --bg: #0d0d0f;
+        --surface: #16161a;
+        --surface2: #1e1e24;
+        --surface3: #25252d;
+        --border: rgba(255, 255, 255, 0.07);
+        --border2: rgba(255, 255, 255, 0.13);
+        --green: #22c55e;
+        --green-dim: rgba(34, 197, 94, 0.12);
+        --green-glow: rgba(34, 197, 94, 0.25);
+        --blue: #3b82f6;
+        --blue-dim: rgba(59, 130, 246, 0.12);
+        --amber: #f59e0b;
+        --amber-dim: rgba(245, 158, 11, 0.12);
+        --purple: #a78bfa;
+        --purple-dim: rgba(167, 139, 250, 0.12);
+        --red: #ef4444;
+        --red-dim: rgba(239, 68, 68, 0.12);
+        --text: #e8e8ec;
+        --muted: #6b6b7a;
+        --muted2: #9595a4;
+        --font: "Sarabun", sans-serif;
+        --mono: "Space Mono", monospace;
+        --sidebar: 220px;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
         padding: 0;
-        z-index: 150;
-        -webkit-overflow-scrolling: touch;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 15px;
+        min-height: 100vh;
+      }
+      .app {
+        display: grid;
+        grid-template-columns: var(--sidebar) 1fr;
+        min-height: 100vh;
       }
 
-      /* ซ่อน logo และ nav-group headers */
-      .sidebar .logo { display: none !important; }
-      .sidebar .nav-group { display: none !important; }
-
-      /* nav items เรียงแนวนอนใน bottom bar */
-      .nav-item {
-        flex-direction: column;
-        gap: 2px;
-        padding: 6px 10px;
+      /* ── SIDEBAR ── */
+      .sidebar {
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        padding: 24px 0;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+      }
+      .logo {
+        padding: 0 20px 20px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 12px;
+      }
+      .logo-title {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--green);
+        letter-spacing: 0.08em;
+      }
+      .logo-sub {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .nav-group {
+        padding: 12px 20px 4px;
         font-size: 10px;
-        border-left: none !important;
-        border-top: 2px solid transparent;
-        white-space: nowrap;
-        min-width: 60px;
-        flex-shrink: 0;
-        justify-content: center;
+        color: var(--muted);
+        letter-spacing: 0.1em;
+        font-family: var(--mono);
+      }
+      .nav-item {
+        display: flex;
         align-items: center;
-        height: 60px;
+        gap: 10px;
+        padding: 9px 20px;
+        font-size: 13px;
+        color: var(--muted2);
+        cursor: pointer;
+        border-left: 2px solid transparent;
+        transition: all 0.15s;
+        user-select: none;
+      }
+      .nav-item:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.03);
       }
       .nav-item.active {
-        border-left: none !important;
-        border-top: 2px solid var(--green) !important;
-        background: var(--green-dim);
         color: var(--green);
+        border-left-color: var(--green);
+        background: var(--green-dim);
       }
       .nav-dot {
-        width: 18px; height: 18px;
-        border-radius: 4px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
         background: currentColor;
-        opacity: 0.7;
+        opacity: 0.5;
         flex-shrink: 0;
       }
 
-      /* main — เพิ่ม padding ด้านล่างเพื่อไม่ให้ content ซ่อนหลัง bottom nav */
-      .main { padding: 16px 12px 76px; }
-
-      /* grids */
-      .grid4 { grid-template-columns: 1fr 1fr; }
-      .grid3 { grid-template-columns: 1fr 1fr; }
-      .grid2 { grid-template-columns: 1fr; }
-
-      /* score card */
-      .score-card { flex-direction: column; text-align: center; gap: 12px; }
-
-      /* charts */
-      .chart-box { height: 160px; }
-
-      /* forms */
-      .form-row { flex-direction: column; }
-      .form-row input, .form-row select { width: 100% !important; }
-
-      /* table horizontal scroll */
-      .table-wrap { overflow-x: auto; }
-      table { min-width: 480px; }
-
-      /* modal */
-      .modal { width: 95vw; padding: 20px 16px; }
-
-      /* fab — ยกขึ้นเหนือ bottom nav */
-      .fab { bottom: 68px; right: 16px; padding: 12px 18px; font-size: 13px; }
-
-      /* stat card */
-      .stat-val { font-size: 16px; }
-
-      /* ach grid */
-      .ach-grid { grid-template-columns: 1fr 1fr; }
-
-      /* workout */
-      .workout-today { padding: 14px; }
-
-      /* streak dots smaller */
-      .streak-dot { width: 22px; height: 22px; font-size: 9px; }
-
-      /* page title */
-      .page-title { font-size: 18px; }
-
-      /* meal */
-      .meal-inner { padding: 12px; }
-
-      /* shake form */
-      #s-milk, #s-banana, #s-oat, #s-pb { width: 100% !important; }
-
-      /* day schedule */
-      .day-row { grid-template-columns: 70px 1fr; gap: 8px; }
-
-      /* macro row */
-      .macro-row { gap: 8px; }
-      .macro-pill { padding: 6px 10px; }
-    }
-
-    @media (max-width: 400px) {
-      .grid4 { grid-template-columns: 1fr 1fr; }
-      .nav-item { padding: 6px 6px; min-width: 50px; font-size: 9px; }
-    }
-  </style>
-</head>
-<body>
-<div class="app">
-  <!-- ══ SIDEBAR ══ -->
-  <aside class="sidebar">
-    <div class="logo">
-      <div class="logo-title">PANITHAN</div>
-      <div class="logo-sub">Weight Gain Tracker</div>
-    </div>
-
-    <div class="nav-group">MAIN</div>
-    <div class="nav-item active" onclick="nav(this,'dashboard')"><span class="nav-dot"></span>Dashboard</div>
-    <div class="nav-item" onclick="nav(this,'today')"><span class="nav-dot"></span>Today</div>
-
-    <div class="nav-group">TRACKING</div>
-    <div class="nav-item" onclick="nav(this,'weight')"><span class="nav-dot"></span>Weight</div>
-    <div class="nav-item" onclick="nav(this,'meal')"><span class="nav-dot"></span>Meals</div>
-    <div class="nav-item" onclick="nav(this,'workout')"><span class="nav-dot"></span>Workout</div>
-
-    <div class="nav-group">PROGRESS</div>
-    <div class="nav-item" onclick="nav(this,'analytics')"><span class="nav-dot"></span>Analytics</div>
-    <div class="nav-item" onclick="nav(this,'achievements')"><span class="nav-dot"></span>Achievements</div>
-  </aside>
-
-  <!-- ══ MAIN ══ -->
-  <main class="main">
-
-    <!-- ████ PAGE: DASHBOARD ████ -->
-    <div class="page active" id="page-dashboard">
-      <div class="page-title">Dashboard</div>
-      <div class="page-sub" id="db-date">วันนี้</div>
-
-      <!-- Daily Score -->
-      <div class="score-card" id="scoreCard">
-        <div class="score-ring">
-          <svg width="80" height="80" viewBox="0 0 80 80">
-            <circle cx="40" cy="40" r="32" fill="none" stroke="var(--surface2)" stroke-width="8"/>
-            <circle id="scoreArc" cx="40" cy="40" r="32" fill="none" stroke="var(--green)" stroke-width="8" stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="201"/>
-          </svg>
-          <div class="score-ring-num" id="scoreNum">0</div>
-        </div>
-        <div class="score-info">
-          <div class="score-title" id="scoreTitle">Today Score</div>
-          <div class="score-msg" id="scoreMsg">เริ่มติ๊กรายการวันนี้เพื่อเพิ่มคะแนน</div>
-        </div>
-      </div>
-
-      <!-- Next Task -->
-      <div class="next-card" id="nextTaskCard">
-        <div class="next-label">▸ NEXT TASK</div>
-        <div class="next-title" id="nextTaskTitle">—</div>
-        <div class="next-sub" id="nextTaskSub">—</div>
-      </div>
-
-      <!-- Stats row -->
-      <div class="grid4">
-        <div class="stat-card">
-          <div class="stat-label">น้ำหนักล่าสุด</div>
-          <div class="stat-val c-green" id="db-last">—</div>
-          <div class="stat-sub" id="db-trend">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">เหลืออีก</div>
-          <div class="stat-val c-blue" id="db-left">—</div>
-          <div class="stat-sub" id="db-eta">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Checklist วันนี้</div>
-          <div class="stat-val c-amber" id="db-check">0/9</div>
-          <div class="stat-sub">รายการสำเร็จ</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Streak</div>
-          <div class="stat-val c-purple" id="db-streak">0</div>
-          <div class="stat-sub">วันติดต่อกัน</div>
-        </div>
-      </div>
-
-      <!-- Recommendations -->
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-title">💡 Smart Recommendations</div>
-        <div id="recContainer">
-          <div class="rec-info"><div class="rec-label">GETTING STARTED</div>บันทึกน้ำหนักวันแรกเพื่อเริ่มระบบ AI recommendations</div>
-        </div>
-      </div>
-
-      <!-- Checklist preview -->
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div class="card-title" style="margin-bottom:0">☑ Checklist วันนี้</div>
-          <div style="font-size:12px;color:var(--muted)">สำเร็จ <span id="db-doneCount">0</span>/<span id="db-totalCount">9</span></div>
-        </div>
-        <div class="prog-wrap"><div class="prog-fill" id="db-progBar" style="width:0%;background:var(--green)"></div></div>
-        <div id="db-checkPreview"></div>
-      </div>
-    </div>
-
-    <!-- ████ PAGE: TODAY ████ -->
-    <div class="page" id="page-today">
-      <div class="page-title">Today</div>
-      <div class="page-sub" id="today-date">—</div>
-
-      <!-- Auto Plan -->
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-title">🎯 Daily Plan วันนี้</div>
-        <div id="dailyPlan"></div>
-      </div>
-
-      <!-- Full Checklist -->
-      <div class="card">
-        <div class="card-title">☑ Checklist ประจำวัน</div>
-        <div id="todayChecklist"></div>
-      </div>
-    </div>
-
-    <!-- ████ PAGE: WEIGHT ████ -->
-    <div class="page" id="page-weight">
-      <div class="page-title">⚖ บันทึกน้ำหนัก</div>
-      <div class="page-sub">ชั่งทุกเช้า หลังเข้าห้องน้ำ ก่อนกิน</div>
-
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-title">ตั้งค่า</div>
-        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
-          <div class="field">
-            <label>น้ำหนักเริ่มต้น (kg)</label>
-            <input type="number" id="startInput" step="0.1" placeholder="40" style="width:110px" oninput="saveGoals();renderAll()"/>
-          </div>
-          <div class="field">
-            <label>เป้าหมาย (kg)</label>
-            <input type="number" id="goalInput" step="0.1" placeholder="50" style="width:110px" oninput="saveGoals();renderAll()"/>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-title">เพิ่มข้อมูล</div>
-        <div class="form-row">
-          <div class="field"><label>วันที่</label><input type="date" id="wDate" style="width:150px"/></div>
-          <div class="field"><label>น้ำหนัก (kg)</label><input type="number" id="wKg" step="0.1" placeholder="68.5" style="width:110px"/></div>
-          <div class="field"><label>หมายเหตุ</label><input type="text" id="wNote" placeholder="เช่น หลังออกกำลังกาย" style="width:200px"/></div>
-          <button class="btn btn-green" onclick="addWeight()">+ บันทึก</button>
-        </div>
-      </div>
-
-      <div class="table-wrap">
-        <table><thead><tr><th>วันที่</th><th>น้ำหนัก</th><th>เปลี่ยนแปลง</th><th>หมายเหตุ</th><th></th></tr></thead>
-        <tbody id="wTable"><tr><td colspan="5" class="empty">ยังไม่มีข้อมูล</td></tr></tbody></table>
-      </div>
-    </div>
-
-    <!-- ████ PAGE: ANALYTICS ████ -->
-    <div class="page" id="page-analytics">
-      <div class="page-title">📈 Weight Analytics</div>
-      <div class="page-sub">แนวโน้มและสถิติน้ำหนัก</div>
-
-      <div class="grid4">
-        <div class="stat-card"><div class="stat-label">น้ำหนักล่าสุด</div><div class="stat-val" id="an-last">—</div></div>
-        <div class="stat-card"><div class="stat-label">เพิ่มขึ้นรวม</div><div class="stat-val c-green" id="an-total">—</div></div>
-        <div class="stat-card"><div class="stat-label">เฉลี่ย/วัน</div><div class="stat-val c-green" id="an-avg">—</div></div>
-        <div class="stat-card"><div class="stat-label">Weekly Gain</div><div class="stat-val c-amber" id="an-week">—</div></div>
-      </div>
-
-      <div class="card" style="margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="card-title" style="margin-bottom:0">กราฟน้ำหนัก</div>
-          <div id="an-trendBadge"></div>
-        </div>
-        <div class="chart-box"><canvas id="wChart"></canvas></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">7-Day Moving Average</div>
-        <div class="chart-box"><canvas id="avgChart"></canvas></div>
-      </div>
-    </div>
-
-    <!-- ████ PAGE: MEAL ████ -->
-    <div class="page" id="page-meal">
-      <div class="page-title">🍱 Meal Planner</div>
-      <div class="page-sub">เป้าหมาย 2,400–2,700 kcal/วัน</div>
-
-      <!-- Auto Plan -->
-      <div class="card" style="margin-bottom:16px" id="mealPlanCard">
-        <div class="card-title">🤖 Auto Generated Plan</div>
-        <div id="autoPlanContent"></div>
-      </div>
-
-      <!-- Shake Calculator -->
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-title">🥤 Shake Calculator</div>
-        <div class="form-row" style="margin-bottom:12px">
-          <div class="field"><label>นม (ml)</label><input type="number" id="s-milk" value="500" style="width:90px" oninput="calcShake()"/></div>
-          <div class="field"><label>กล้วย (ลูก)</label><input type="number" id="s-banana" value="2" style="width:80px" oninput="calcShake()"/></div>
-          <div class="field"><label>ข้าวโอ๊ต (g)</label><input type="number" id="s-oat" value="80" style="width:80px" oninput="calcShake()"/></div>
-          <div class="field"><label>เนยถั่ว (ช้อน)</label><input type="number" id="s-pb" value="2" style="width:80px" oninput="calcShake()"/></div>
-        </div>
-        <div class="shake-result" id="shakeResult"></div>
-      </div>
-
-      <!-- Meals -->
-      <div class="meal-block">
-        <div class="meal-time-label">▸ เช้า — 07:00</div>
-        <div class="meal-inner">
-          <div class="meal-header"><span class="meal-name">มื้อเช้า</span><span class="kcal-tag">~600 kcal</span></div>
-          <ul class="meal-list"><li>ข้าว 2 จาน</li><li>ไข่ 3 ฟอง (ต้ม/ดาว/เจียว)</li><li>นม 1 กล่อง (250 ml)</li><li style="color:var(--green)">+ กล้วย 1 ลูก (~90 kcal)</li></ul>
-        </div>
-      </div>
-      <div class="meal-block">
-        <div class="meal-time-label">▸ ช่วงสาย — 10:00 ⭐ สำคัญที่สุด</div>
-        <div class="meal-inner shake-inner">
-          <div class="meal-header"><span class="meal-name">Mass Shake</span><span class="kcal-tag">~700 kcal</span></div>
-          <ul class="meal-list"><li>นม 500 ml</li><li>กล้วย 2 ลูก</li><li>ข้าวโอ๊ต 80g</li><li>เนยถั่ว 2 ช้อนโต๊ะ</li></ul>
-          <div class="tip-box">ปั่นรวมกัน — กินง่าย แคลสูง เป็นมื้อที่สำคัญที่สุด</div>
-        </div>
-      </div>
-      <div class="meal-block">
-        <div class="meal-time-label">▸ กลางวัน — 12:00</div>
-        <div class="meal-inner">
-          <div class="meal-header"><span class="meal-name">มื้อกลางวัน</span><span class="kcal-tag">~700 kcal</span></div>
-          <ul class="meal-list"><li>ข้าว 2 จาน</li><li>เนื้อสัตว์ 2 อย่าง</li><li>ไข่เพิ่ม 1–2 ฟอง</li></ul>
-        </div>
-      </div>
-      <div class="meal-block">
-        <div class="meal-time-label">▸ เย็น — 18:00</div>
-        <div class="meal-inner">
-          <div class="meal-header"><span class="meal-name">มื้อเย็น</span><span class="kcal-tag">~600 kcal</span></div>
-          <ul class="meal-list"><li>ข้าว 2 จาน</li><li>หมู/ไก่/ปลา</li><li>ผักนิดหน่อย</li></ul>
-        </div>
-      </div>
-      <div class="meal-block">
-        <div class="meal-time-label">▸ ก่อนนอน — 21:30</div>
-        <div class="meal-inner">
-          <div class="meal-header"><span class="meal-name">มื้อดึก</span><span class="kcal-tag">~300 kcal</span></div>
-          <ul class="meal-list"><li>นม 1 แก้วใหญ่</li><li>กล้วย 1 ลูก หรือขนมปังทาเนยถั่ว</li></ul>
-          <div class="tip-box">ห้ามนอนหิว — ร่างกายสร้างกล้ามเนื้อตอนหลับ</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">KCAL BREAKDOWN</div>
-        <div class="kbar-row"><div class="kbar-label">เช้า</div><div class="kbar-track"><div class="kbar-fill" style="width:22%;background:var(--green)"></div></div><div class="kbar-num">600</div></div>
-        <div class="kbar-row"><div class="kbar-label">Shake สาย</div><div class="kbar-track"><div class="kbar-fill" style="width:26%;background:var(--blue)"></div></div><div class="kbar-num">700</div></div>
-        <div class="kbar-row"><div class="kbar-label">กลางวัน</div><div class="kbar-track"><div class="kbar-fill" style="width:26%;background:var(--green)"></div></div><div class="kbar-num">700</div></div>
-        <div class="kbar-row"><div class="kbar-label">เย็น</div><div class="kbar-track"><div class="kbar-fill" style="width:22%;background:var(--amber)"></div></div><div class="kbar-num">600</div></div>
-        <div class="kbar-row"><div class="kbar-label">ก่อนนอน</div><div class="kbar-track"><div class="kbar-fill" style="width:11%;background:var(--muted)"></div></div><div class="kbar-num">300</div></div>
-        <div style="text-align:right;font-family:var(--mono);font-size:13px;color:var(--green);margin-top:10px;font-weight:700">รวม ~2,900 kcal/วัน</div>
-      </div>
-    </div>
-
-    <!-- ████ PAGE: WORKOUT ████ -->
-    <div class="page" id="page-workout">
-      <div class="page-title">💪 Workout</div>
-      <div class="page-sub">ไม่ต้องฟิตเนส ทำที่บ้านได้</div>
-
-      <!-- Today's workout -->
-      <div class="workout-today" id="todayWorkout"></div>
-
-      <!-- Full schedule -->
-      <div class="card">
-        <div class="card-title">ตารางทั้งสัปดาห์</div>
-        <div class="day-row"><div><div class="day-name">จันทร์</div><div class="day-type"><span class="badge badge-push">Push</span></div></div>
-          <ul style="list-style:none"><li class="ex-item"><span>วิดพื้น</span><span class="ex-sets">4×max</span></li><li class="ex-item"><span>Chair dip</span><span class="ex-sets">4×max</span></li><li class="ex-item"><span>Pike push-up</span><span class="ex-sets">3×max</span></li></ul></div>
-        <div class="day-row"><div><div class="day-name">อังคาร</div><div class="day-type"><span class="badge badge-leg">Leg</span></div></div>
-          <ul style="list-style:none"><li class="ex-item"><span>Squat</span><span class="ex-sets">5×15</span></li><li class="ex-item"><span>Lunge</span><span class="ex-sets">4×12/ข้าง</span></li><li class="ex-item"><span>Calf raise</span><span class="ex-sets">5×20</span></li></ul></div>
-        <div class="day-row"><div><div class="day-name">พุธ</div><div class="day-type"><span class="badge badge-rest">พัก</span></div></div><div style="font-size:13px;color:var(--muted);padding-top:4px">พักผ่อน นอนหลับให้พอ กินให้ครบ</div></div>
-        <div class="day-row"><div><div class="day-name">พฤหัส</div><div class="day-type"><span class="badge badge-pull">Pull</span></div></div>
-          <ul style="list-style:none"><li class="ex-item"><span>ดึงข้อ</span><span class="ex-sets">4×max</span></li><li class="ex-item"><span>Row กระเป๋าหนัก</span><span class="ex-sets">4×12</span></li><li class="ex-item"><span>Reverse snow angel</span><span class="ex-sets">3×15</span></li><li class="ex-item"><span>Curl แกลลอนน้ำ</span><span class="ex-sets">3×12</span></li></ul></div>
-        <div class="day-row"><div><div class="day-name">ศุกร์</div><div class="day-type"><span class="badge badge-full">Full</span></div></div>
-          <ul style="list-style:none"><li class="ex-item"><span>วิดพื้น+Squat+Plank+Dip วน 4 รอบ</span></li></ul></div>
-        <div class="day-row"><div><div class="day-name">เสาร์/อา.</div><div class="day-type"><span class="badge badge-rest">พัก</span></div></div><div style="font-size:13px;color:var(--muted);padding-top:4px">พัก 1 วัน อีกวันเดิน/ยืดตัว</div></div>
-      </div>
-    </div>
-
-    <!-- ████ PAGE: ACHIEVEMENTS ████ -->
-    <div class="page" id="page-achievements">
-      <div class="page-title">🏆 Achievements</div>
-      <div class="page-sub">ความสำเร็จและ streak</div>
-
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-title">Streak — 30 วันล่าสุด</div>
-        <div class="streak-row" id="streakRow"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Achievements</div>
-        <div class="ach-grid" id="achGrid"></div>
-      </div>
-    </div>
-
-  </main>
-</div>
-
-<!-- FAB -->
-<button class="fab" onclick="openModal()">＋ บันทึกน้ำหนัก</button>
-
-<!-- MODAL -->
-<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
-  <div class="modal" style="position:relative">
-    <button class="modal-close" onclick="closeModal()">✕</button>
-    <div class="modal-title">⚖ บันทึกน้ำหนักวันนี้</div>
-    <div class="modal-sub" id="modal-date">—</div>
-    <div class="field" style="margin-bottom:12px">
-      <label>น้ำหนัก (kg)</label>
-      <input type="number" id="m-kg" step="0.1" placeholder="เช่น 68.5" style="width:100%"/>
-    </div>
-    <div class="field" style="margin-bottom:12px">
-      <label>หมายเหตุ (ไม่บังคับ)</label>
-      <input type="text" id="m-note" placeholder="เช่น หลังออกกำลังกาย" style="width:100%"/>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
-      <button class="btn btn-green" onclick="addWeightModal()">บันทึก</button>
-    </div>
-  </div>
-</div>
-
-<script>
-// ══════════════════════════════════════════════════
-// DATA LAYER
-// ══════════════════════════════════════════════════
-const TODAY = new Date().toISOString().split('T')[0];
-
-function ld(key,def){ try{ return JSON.parse(localStorage.getItem(key)??'null')??def; }catch{ return def; } }
-function sv(key,val){ localStorage.setItem(key,JSON.stringify(val)); }
-
-function loadEntries(){ return ld('wEntries',[]); }
-function saveEntries(a){ sv('wEntries',a); }
-function loadGoals(){ return ld('goals',{start:'',goal:''}); }
-function saveGoals(){ sv('goals',{start:document.getElementById('startInput').value, goal:document.getElementById('goalInput').value}); }
-function loadCheckState(){
-  const s=ld('checkState',{date:'',done:{}});
-  if(s.date!==TODAY) return {date:TODAY,done:{}};
-  return s;
-}
-function saveCheckState(s){ sv('checkState',s); }
-function loadWorkoutDone(){ return ld('wkDone_'+TODAY,{}); }
-function saveWorkoutDone(d){ sv('wkDone_'+TODAY,d); }
-
-// ══════════════════════════════════════════════════
-// NAVIGATION
-// ══════════════════════════════════════════════════
-function nav(el,pageId){
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('page-'+pageId).classList.add('active');
-  if(pageId==='analytics') renderCharts();
-}
-
-// ══════════════════════════════════════════════════
-// CHECKLIST DATA
-// ══════════════════════════════════════════════════
-const CL = [
-  {id:'c1', text:'ชั่งน้ำหนักเช้า',           time:'06:30', kcal:0,  cat:'weight'},
-  {id:'c2', text:'มื้อเช้า (ข้าว+ไข่+นม)',    time:'07:00', kcal:600, cat:'meal'},
-  {id:'c3', text:'Mass Shake ช่วงสาย',         time:'10:00', kcal:700, cat:'shake'},
-  {id:'c4', text:'มื้อกลางวัน',                time:'12:30', kcal:700, cat:'meal'},
-  {id:'c5', text:'ดื่มน้ำ 2L+',                time:'ตลอดวัน', kcal:0, cat:'water'},
-  {id:'c6', text:'ออกกำลังกาย',                time:'17:00', kcal:0,  cat:'workout'},
-  {id:'c7', text:'มื้อเย็น',                   time:'18:00', kcal:600, cat:'meal'},
-  {id:'c8', text:'มื้อก่อนนอน (นม+กล้วย)',    time:'21:30', kcal:300, cat:'meal'},
-  {id:'c9', text:'นอน 7+ ชั่วโมง',             time:'22:30', kcal:0,  cat:'sleep'},
-];
-
-// ══════════════════════════════════════════════════
-// WORKOUT DATA
-// ══════════════════════════════════════════════════
-const WORKOUT_PLAN = {
-  1:{ type:'Push', badge:'badge-push', exercises:[{n:'วิดพื้น',s:'4 เซ็ต × max'},{n:'Chair dip',s:'4 เซ็ต × max'},{n:'Pike push-up',s:'3 เซ็ต × max'}]},
-  2:{ type:'Leg',  badge:'badge-leg',  exercises:[{n:'Squat',s:'5 เซ็ต × 15'},{n:'Lunge',s:'4 เซ็ต × 12/ข้าง'},{n:'Calf raise',s:'5 เซ็ต × 20'}]},
-  3:{ type:'Rest', badge:'badge-rest', exercises:[]},
-  4:{ type:'Pull', badge:'badge-pull', exercises:[{n:'ดึงข้อ',s:'4 เซ็ต × max'},{n:'Row กระเป๋าหนัก',s:'4 เซ็ต × 12'},{n:'Reverse snow angel',s:'3 เซ็ต × 15'},{n:'Curl แกลลอนน้ำ',s:'3 เซ็ต × 12'}]},
-  5:{ type:'Full', badge:'badge-full', exercises:[{n:'วิดพื้น+Squat+Plank+Dip วน 4 รอบ',s:''}]},
-  6:{ type:'Rest', badge:'badge-rest', exercises:[]},
-  0:{ type:'Rest', badge:'badge-rest', exercises:[]},
-};
-const DAY_TH = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
-
-// ══════════════════════════════════════════════════
-// ACHIEVEMENTS
-// ══════════════════════════════════════════════════
-const ACHIEVEMENTS = [
-  {id:'first',    icon:'🌱', name:'First Step',      desc:'บันทึกน้ำหนักครั้งแรก',        check:(e,s)=>e.length>=1},
-  {id:'week',     icon:'📅', name:'One Week',         desc:'บันทึกครบ 7 วัน',               check:(e,s)=>e.length>=7},
-  {id:'gain1',    icon:'📈', name:'+1 kg',            desc:'น้ำหนักเพิ่มขึ้น 1 kg',         check:(e,s)=>e.length>1&&(e[e.length-1].kg-e[0].kg)>=1},
-  {id:'gain3',    icon:'🏋️', name:'+3 kg',            desc:'น้ำหนักเพิ่มขึ้น 3 kg',         check:(e,s)=>e.length>1&&(e[e.length-1].kg-e[0].kg)>=3},
-  {id:'streak7',  icon:'🔥', name:'7-Day Streak',     desc:'ทำ checklist 7 วันติดต่อกัน',   check:(e,s)=>calcStreak()>=7},
-  {id:'shake14',  icon:'🥤', name:'Shake Master',     desc:'ไม่ขาด shake 14 วัน',           check:(e,s)=>calcShakeStreak()>=14},
-  {id:'check7',   icon:'✅', name:'Consistent',       desc:'กินครบ 7 วันติดต่อกัน',         check:(e,s)=>calcStreak()>=7},
-  {id:'target',   icon:'🎯', name:'Goal Reached',     desc:'ถึงเป้าหมายน้ำหนัก',            check:(e,s)=>{const g=parseFloat(s.goal);const last=e.length?e[e.length-1].kg:0;return g&&last>=g;}},
-  {id:'month',    icon:'📆', name:'One Month',        desc:'บันทึกครบ 30 วัน',              check:(e,s)=>e.length>=30},
-];
-
-// ══════════════════════════════════════════════════
-// HELPERS
-// ══════════════════════════════════════════════════
-function fmtDate(d){ const[y,m,dd]=d.split('-'); return `${dd}/${m}/${y}`; }
-function todayDow(){ return new Date().getDay(); } // 0=Sun
-
-function calcStreak(){
-  // count consecutive days where ALL meal items were checked
-  // simplified: count days stored in checkHistory
-  const hist = ld('checkHistory', {});
-  let streak=0;
-  const d=new Date();
-  for(let i=0;i<60;i++){
-    const key=d.toISOString().split('T')[0];
-    if(hist[key] && hist[key]>=5) streak++;
-    else break;
-    d.setDate(d.getDate()-1);
-  }
-  return streak;
-}
-
-function calcShakeStreak(){
-  const hist=ld('checkHistory',{});
-  let streak=0;
-  const d=new Date();
-  for(let i=0;i<60;i++){
-    const key=d.toISOString().split('T')[0];
-    const shakes=ld('shakeHit_'+key,false);
-    if(shakes) streak++; else break;
-    d.setDate(d.getDate()-1);
-  }
-  return streak;
-}
-
-function kcalFromCheck(){
-  const state=loadCheckState();
-  return CL.filter(c=>state.done[c.id]).reduce((a,c)=>a+c.kcal,0);
-}
-
-// ══════════════════════════════════════════════════
-// DAILY SCORE
-// ══════════════════════════════════════════════════
-function calcScore(){
-  const state=loadCheckState();
-  const done=Object.values(state.done).filter(Boolean).length;
-  return Math.round((done/CL.length)*100);
-}
-
-function renderScore(){
-  const score=calcScore();
-  const circ=201; // 2*PI*32
-  const offset=circ-(circ*score/100);
-  document.getElementById('scoreArc').style.strokeDashoffset=offset;
-  let col='var(--red)';
-  if(score>=60) col='var(--amber)';
-  if(score>=80) col='var(--green)';
-  document.getElementById('scoreArc').style.stroke=col;
-  document.getElementById('scoreNum').textContent=score;
-  document.getElementById('scoreNum').style.color=col;
-  let title='Today Score', msg='';
-  if(score===100){ title='🎉 Perfect Day!'; msg='คุณทำได้ครบทุกอย่างวันนี้!'; }
-  else if(score>=80){ title='🔥 Almost There'; msg='ยอดเยี่ยม! เหลืออีกนิดเดียว'; }
-  else if(score>=50){ title='💪 Keep Going'; msg='กำลังดี ทำต่อไปเลย'; }
-  else if(score>0) { title='🌱 Just Started'; msg='เริ่มดีแล้ว ติ๊กรายการเพิ่มเลย'; }
-  else { title='Today Score'; msg='เริ่มติ๊กรายการวันนี้เพื่อเพิ่มคะแนน'; }
-  document.getElementById('scoreTitle').textContent=title;
-  document.getElementById('scoreMsg').textContent=msg;
-}
-
-// ══════════════════════════════════════════════════
-// NEXT TASK
-// ══════════════════════════════════════════════════
-function renderNextTask(){
-  const state=loadCheckState();
-  const next=CL.find(c=>!state.done[c.id]);
-  if(!next){
-    document.getElementById('nextTaskTitle').textContent='🎉 เสร็จทุกอย่างแล้ววันนี้!';
-    document.getElementById('nextTaskSub').textContent='สุดยอด — พักผ่อนได้เลย';
-  } else {
-    document.getElementById('nextTaskTitle').textContent=next.text;
-    document.getElementById('nextTaskSub').textContent='เวลา '+next.time+(next.kcal?` · +${next.kcal} kcal`:'');
-  }
-}
-
-// ══════════════════════════════════════════════════
-// RECOMMENDATIONS (AI-style)
-// ══════════════════════════════════════════════════
-function renderRecs(){
-  const entries=loadEntries();
-  const goals=loadGoals();
-  const recs=[];
-
-  if(entries.length===0){
-    recs.push({cls:'rec-info',label:'GETTING STARTED',msg:'บันทึกน้ำหนักวันแรกเพื่อเริ่มระบบ recommendations'});
-  } else {
-    const last=entries[entries.length-1];
-    const goal=parseFloat(goals.goal)||null;
-    const start=parseFloat(goals.start)||null;
-
-    // Stagnant weight
-    if(entries.length>=14){
-      const avg14=entries.slice(-14).reduce((a,e)=>a+e.kg,0)/14;
-      const avg7=entries.slice(-7).reduce((a,e)=>a+e.kg,0)/7;
-      if(Math.abs(avg7-avg14)<0.2){
-        recs.push({cls:'rec-warn',label:'⚠ น้ำหนักคงที่',msg:`น้ำหนักคงที่มา ${entries.length>=14?'14':'7'} วัน — แนะนำเพิ่ม +300 kcal/วัน หรือเพิ่ม shake อีกแก้ว`});
+      /* ── MAIN ── */
+      .main {
+        padding: 32px;
+        overflow-x: hidden;
       }
-    }
-
-    // Trend
-    if(entries.length>=3){
-      const recent=entries.slice(-3);
-      const gain=recent[2].kg-recent[0].kg;
-      if(gain>0){ recs.push({cls:'rec-good',label:'📈 TREND',msg:`น้ำหนักเพิ่มขึ้น +${gain.toFixed(1)} kg ใน 3 วันล่าสุด — ไปได้ดีมาก!`}); }
-      else if(gain<-0.3){ recs.push({cls:'rec-bad',label:'📉 TREND',msg:`น้ำหนักลดลง ${gain.toFixed(1)} kg — อาจต้องเพิ่มมื้อดึกหรือ shake`}); }
-    }
-
-    // ETA
-    if(goal&&start&&entries.length>=2){
-      const days=entries.length;
-      const totalGain=last.kg-entries[0].kg;
-      const perDay=totalGain/Math.max(days-1,1);
-      const left=goal-last.kg;
-      if(left>0&&perDay>0){
-        const eta=Math.round(left/perDay);
-        recs.push({cls:'rec-info',label:'🎯 ETA',msg:`ถ้าเพิ่มได้ ${perDay.toFixed(2)} kg/วันต่อเนื่อง จะถึง ${goal} kg ใน ~${eta} วัน`});
+      .page {
+        display: none;
       }
-    }
+      .page.active {
+        display: block;
+      }
+      .page-title {
+        font-size: 22px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .page-sub {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 24px;
+      }
 
-    // Shake streak
-    const shakeStreak=calcShakeStreak();
-    if(shakeStreak===0){
-      recs.push({cls:'rec-bad',label:'🥤 SHAKE',msg:'คุณยังไม่ได้กด shake วันนี้ — นี่คือมื้อสำคัญที่สุด!'});
-    } else if(shakeStreak>=7){
-      recs.push({cls:'rec-good',label:'🥤 SHAKE STREAK',msg:`ไม่ขาด Shake ${shakeStreak} วันติดต่อกัน — ยอดเยี่ยม!`});
-    }
-  }
+      /* ── CARDS ── */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+      }
+      .card + .card {
+        margin-top: 16px;
+      }
+      .card-title {
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-family: var(--mono);
+        margin-bottom: 14px;
+      }
 
-  if(recs.length===0) recs.push({cls:'rec-good',label:'✓ ALL GOOD',msg:'ทุกอย่างดูดีมาก ทำต่อไปเลย!'});
-  document.getElementById('recContainer').innerHTML=recs.map(r=>
-    `<div class="rec-card ${r.cls}"><div class="rec-label">${r.label}</div>${r.msg}</div>`
-  ).join('');
-}
+      /* ── GRID ── */
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .grid4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .grid3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 16px;
+      }
 
-// ══════════════════════════════════════════════════
-// CHECKLIST RENDER
-// ══════════════════════════════════════════════════
-function renderChecklist(containerId, limit=null){
-  const state=loadCheckState();
-  const items=limit?CL.slice(0,limit):CL;
-  const el=document.getElementById(containerId);
-  el.innerHTML=items.map(item=>{
-    const done=!!state.done[item.id];
-    return `<div class="check-item${done?' done':''}" onclick="toggleCheck('${item.id}')">
+      /* ── STAT CARD ── */
+      .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px;
+      }
+      .stat-label {
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 6px;
+      }
+      .stat-val {
+        font-family: var(--mono);
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      .stat-sub {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .c-green {
+        color: var(--green);
+      }
+      .c-blue {
+        color: var(--blue);
+      }
+      .c-amber {
+        color: var(--amber);
+      }
+      .c-red {
+        color: var(--red);
+      }
+      .c-purple {
+        color: var(--purple);
+      }
+
+      /* ── SCORE RING ── */
+      .score-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 16px;
+      }
+      .score-ring {
+        position: relative;
+        width: 80px;
+        height: 80px;
+        flex-shrink: 0;
+      }
+      .score-ring svg {
+        transform: rotate(-90deg);
+      }
+      .score-ring-num {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--mono);
+        font-size: 18px;
+        font-weight: 700;
+      }
+      .score-info {
+        flex: 1;
+      }
+      .score-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .score-msg {
+        font-size: 12px;
+        color: var(--muted2);
+        line-height: 1.6;
+      }
+
+      /* ── PROGRESS BAR ── */
+      .prog-wrap {
+        background: var(--surface2);
+        border-radius: 20px;
+        height: 6px;
+        margin: 8px 0;
+      }
+      .prog-fill {
+        height: 100%;
+        border-radius: 20px;
+        transition: width 0.4s;
+      }
+
+      /* ── CHECKLIST ── */
+      .check-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        transition: opacity 0.15s;
+      }
+      .check-item:last-child {
+        border-bottom: none;
+      }
+      .check-box {
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--border2);
+        border-radius: 5px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+      }
+      .check-item.done .check-box {
+        background: var(--green);
+        border-color: var(--green);
+      }
+      .check-item.done .check-box::after {
+        content: "✓";
+        font-size: 11px;
+        color: #000;
+        font-weight: 700;
+      }
+      .check-item.done .check-text {
+        text-decoration: line-through;
+        color: var(--muted);
+      }
+      .check-text {
+        font-size: 13px;
+        color: var(--muted2);
+        flex: 1;
+      }
+      .check-time {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--muted);
+      }
+
+      /* ── NEXT TASK ── */
+      .next-card {
+        background: linear-gradient(
+          135deg,
+          var(--green-dim),
+          rgba(59, 130, 246, 0.08)
+        );
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      .next-label {
+        font-size: 10px;
+        color: var(--green);
+        font-family: var(--mono);
+        letter-spacing: 0.1em;
+        margin-bottom: 6px;
+      }
+      .next-title {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 2px;
+      }
+      .next-sub {
+        font-size: 12px;
+        color: var(--muted2);
+      }
+
+      /* ── RECOMMENDATION ── */
+      .rec-card {
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
+        font-size: 13px;
+        border-left: 3px solid;
+      }
+      .rec-warn {
+        background: var(--amber-dim);
+        border-color: var(--amber);
+        color: #fcd34d;
+      }
+      .rec-info {
+        background: var(--blue-dim);
+        border-color: var(--blue);
+        color: #93c5fd;
+      }
+      .rec-good {
+        background: var(--green-dim);
+        border-color: var(--green);
+        color: #4ade80;
+      }
+      .rec-bad {
+        background: var(--red-dim);
+        border-color: var(--red);
+        color: #f87171;
+      }
+      .rec-label {
+        font-size: 10px;
+        font-family: var(--mono);
+        letter-spacing: 0.08em;
+        opacity: 0.8;
+        margin-bottom: 3px;
+      }
+
+      /* ── FORM ── */
+      .form-row {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .field label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      input[type="date"],
+      input[type="number"],
+      input[type="text"],
+      select {
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        color: var(--text);
+        padding: 9px 12px;
+        font-size: 13px;
+        font-family: var(--font);
+        outline: none;
+        transition: border 0.15s;
+      }
+      input:focus,
+      select:focus {
+        border-color: var(--green);
+      }
+      select option {
+        background: var(--surface2);
+      }
+      .btn {
+        padding: 9px 18px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-size: 13px;
+        font-family: var(--font);
+        font-weight: 500;
+        transition: all 0.15s;
+      }
+      .btn-green {
+        background: var(--green);
+        color: #000;
+      }
+      .btn-green:hover {
+        background: #16a34a;
+      }
+      .btn-sm {
+        padding: 5px 12px;
+        font-size: 12px;
+      }
+      .btn-ghost {
+        background: var(--surface2);
+        color: var(--text);
+        border: 1px solid var(--border2);
+      }
+      .btn-ghost:hover {
+        border-color: var(--green);
+        color: var(--green);
+      }
+
+      /* ── TABLE ── */
+      .table-wrap {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      th {
+        background: var(--surface2);
+        padding: 10px 14px;
+        text-align: left;
+        font-size: 10px;
+        font-weight: 500;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        border-bottom: 1px solid var(--border);
+      }
+      td {
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      .del-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 13px;
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+      .del-btn:hover {
+        color: var(--red);
+      }
+
+      /* ── BADGE ── */
+      .badge {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 20px;
+        display: inline-block;
+        font-family: var(--mono);
+      }
+      .badge-up {
+        background: rgba(34, 197, 94, 0.15);
+        color: #4ade80;
+      }
+      .badge-dn {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+      }
+      .badge-eq {
+        background: var(--surface2);
+        color: var(--muted);
+      }
+      .badge-push {
+        background: rgba(139, 92, 246, 0.15);
+        color: #a78bfa;
+      }
+      .badge-leg {
+        background: rgba(34, 197, 94, 0.15);
+        color: #4ade80;
+      }
+      .badge-pull {
+        background: rgba(245, 158, 11, 0.15);
+        color: #fbbf24;
+      }
+      .badge-full {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+      }
+      .badge-rest {
+        background: var(--surface2);
+        color: var(--muted);
+      }
+
+      /* ── CHART ── */
+      .chart-box {
+        position: relative;
+        height: 200px;
+        margin-top: 16px;
+      }
+
+      /* ── WORKOUT ── */
+      .workout-today {
+        background: linear-gradient(135deg, var(--purple-dim), var(--surface));
+        border: 1px solid rgba(167, 139, 250, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      .ex-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+      }
+      .ex-item:last-child {
+        border-bottom: none;
+      }
+      .ex-sets {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--green);
+      }
+      .ex-done {
+        color: var(--muted);
+        text-decoration: line-through;
+      }
+      .ex-check {
+        width: 22px;
+        height: 22px;
+        border: 2px solid var(--border2);
+        border-radius: 5px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+        flex-shrink: 0;
+      }
+      .ex-check.done {
+        background: var(--purple);
+        border-color: var(--purple);
+      }
+      .ex-check.done::after {
+        content: "✓";
+        font-size: 11px;
+        color: #fff;
+        font-weight: 700;
+      }
+
+      /* ── ACHIEVEMENT ── */
+      .ach-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+      .ach-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
+        text-align: center;
+      }
+      .ach-card.unlocked {
+        border-color: rgba(245, 158, 11, 0.3);
+        background: rgba(245, 158, 11, 0.05);
+      }
+      .ach-icon {
+        font-size: 28px;
+        margin-bottom: 6px;
+      }
+      .ach-name {
+        font-size: 12px;
+        font-weight: 500;
+        margin-bottom: 2px;
+      }
+      .ach-desc {
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .ach-card.locked .ach-icon {
+        filter: grayscale(1);
+        opacity: 0.3;
+      }
+      .ach-card.locked .ach-name {
+        color: var(--muted);
+      }
+
+      /* ── STREAK ── */
+      .streak-row {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      .streak-dot {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-family: var(--mono);
+      }
+      .streak-dot.hit {
+        background: var(--green-dim);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        color: var(--green);
+      }
+      .streak-dot.miss {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        color: var(--muted);
+      }
+      .streak-dot.today {
+        border: 2px solid var(--green);
+      }
+
+      /* ── MEAL ── */
+      .meal-block {
+        margin-bottom: 16px;
+      }
+      .meal-time-label {
+        font-size: 10px;
+        font-family: var(--mono);
+        color: var(--green);
+        letter-spacing: 0.08em;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+      }
+      .meal-inner {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
+      }
+      .meal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .meal-name {
+        font-weight: 500;
+        font-size: 14px;
+      }
+      .kcal-tag {
+        font-family: var(--mono);
+        font-size: 11px;
+        background: var(--green-dim);
+        color: var(--green);
+        padding: 3px 10px;
+        border-radius: 20px;
+      }
+      .meal-list {
+        list-style: none;
+      }
+      .meal-list li {
+        font-size: 13px;
+        color: var(--muted2);
+        padding: 3px 0;
+        display: flex;
+        gap: 8px;
+      }
+      .meal-list li::before {
+        content: "--";
+        color: var(--green);
+      }
+      .shake-inner {
+        border-color: rgba(34, 197, 94, 0.3);
+        background: rgba(34, 197, 94, 0.04);
+      }
+      .tip-box {
+        background: var(--blue-dim);
+        border-left: 2px solid var(--blue);
+        border-radius: 6px;
+        padding: 8px 12px;
+        margin-top: 10px;
+        font-size: 12px;
+        color: #93c5fd;
+      }
+
+      /* ── KBAR ── */
+      .kbar-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+        font-size: 12px;
+      }
+      .kbar-label {
+        width: 90px;
+        color: var(--muted);
+        flex-shrink: 0;
+      }
+      .kbar-track {
+        flex: 1;
+        background: var(--surface2);
+        border-radius: 20px;
+        height: 7px;
+      }
+      .kbar-fill {
+        height: 100%;
+        border-radius: 20px;
+      }
+      .kbar-num {
+        width: 50px;
+        text-align: right;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted2);
+      }
+
+      /* ── SHAKE CALC ── */
+      .shake-result {
+        background: var(--green-dim);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        border-radius: 10px;
+        padding: 14px;
+        margin-top: 12px;
+      }
+      .macro-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .macro-pill {
+        background: var(--surface2);
+        border-radius: 8px;
+        padding: 8px 14px;
+        text-align: center;
+      }
+      .macro-val {
+        font-family: var(--mono);
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--green);
+      }
+      .macro-label {
+        font-size: 10px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+
+      /* ── FAB ── */
+      .fab {
+        position: fixed;
+        bottom: 28px;
+        right: 28px;
+        background: var(--green);
+        color: #000;
+        border: none;
+        border-radius: 50px;
+        padding: 14px 22px;
+        font-size: 14px;
+        font-family: var(--font);
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 4px 20px var(--green-glow);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        z-index: 100;
+        transition: all 0.2s;
+      }
+      .fab:hover {
+        background: #16a34a;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 24px var(--green-glow);
+      }
+
+      /* ── MODAL ── */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+        z-index: 200;
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-overlay.open {
+        display: flex;
+      }
+      .modal {
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        border-radius: 16px;
+        padding: 28px;
+        width: 360px;
+        max-width: 90vw;
+      }
+      .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      .modal-sub {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 20px;
+      }
+      .modal-close {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 18px;
+        cursor: pointer;
+      }
+      .modal .form-row {
+        flex-direction: column;
+        margin-bottom: 14px;
+      }
+      .modal .form-row .field {
+        width: 100%;
+      }
+      .modal .form-row input {
+        width: 100%;
+      }
+      .modal-footer {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 20px;
+      }
+
+      /* ── DIVIDER ── */
+      .divider {
+        height: 1px;
+        background: var(--border);
+        margin: 16px 0;
+      }
+
+      /* ── TREND ARROW ── */
+      .trend {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-family: var(--mono);
+        font-size: 12px;
+        padding: 3px 10px;
+        border-radius: 20px;
+      }
+      .trend-up {
+        background: rgba(34, 197, 94, 0.15);
+        color: #4ade80;
+      }
+      .trend-dn {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+      }
+      .trend-eq {
+        background: var(--surface2);
+        color: var(--muted);
+      }
+
+      /* ── EMPTY STATE ── */
+      .empty {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--muted);
+      }
+      .empty-icon {
+        font-size: 36px;
+        margin-bottom: 10px;
+      }
+      .empty-title {
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--muted2);
+        margin-bottom: 6px;
+      }
+      .empty-sub {
+        font-size: 13px;
+      }
+
+      /* ── DAY SCHEDULE ── */
+      .day-row {
+        display: grid;
+        grid-template-columns: 90px 1fr;
+        gap: 14px;
+        align-items: start;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .day-row:last-child {
+        border-bottom: none;
+      }
+      .day-name {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 700;
+        padding-top: 3px;
+      }
+      .day-type {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 3px;
+      }
+
+      /* ── RULES ── */
+      .rule-item {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .rule-item:last-child {
+        border-bottom: none;
+      }
+      .rule-num {
+        font-family: var(--mono);
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--green);
+        min-width: 30px;
+      }
+      .rule-body {
+        font-size: 13px;
+        line-height: 1.7;
+        color: var(--muted2);
+      }
+      .rule-body strong {
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      /* ── BUDGET ── */
+      .budget-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 11px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+      }
+      .budget-row:last-child {
+        border-bottom: none;
+      }
+      .budget-name {
+        color: var(--muted2);
+      }
+      .budget-price {
+        font-family: var(--mono);
+      }
+
+      /* ══ RESPONSIVE / MOBILE ══ */
+      @media (max-width: 768px) {
+        :root {
+          --sidebar: 0px;
+        }
+
+        .app {
+          display: block;
+        }
+
+        /* Sidebar กลายเป็น bottom nav bar */
+        .sidebar {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          top: auto;
+          height: 60px;
+          width: 100%;
+          display: flex !important;
+          flex-direction: row;
+          overflow-x: auto;
+          overflow-y: hidden;
+          background: var(--surface);
+          border-top: 1px solid var(--border);
+          border-right: none;
+          padding: 0;
+          z-index: 150;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        /* ซ่อน logo และ nav-group headers */
+        .sidebar .logo {
+          display: none !important;
+        }
+        .sidebar .nav-group {
+          display: none !important;
+        }
+
+        /* nav items เรียงแนวนอนใน bottom bar */
+        .nav-item {
+          flex-direction: column;
+          gap: 2px;
+          padding: 6px 10px;
+          font-size: 10px;
+          border-left: none !important;
+          border-top: 2px solid transparent;
+          white-space: nowrap;
+          min-width: 60px;
+          flex-shrink: 0;
+          justify-content: center;
+          align-items: center;
+          height: 60px;
+        }
+        .nav-item.active {
+          border-left: none !important;
+          border-top: 2px solid var(--green) !important;
+          background: var(--green-dim);
+          color: var(--green);
+        }
+        .nav-dot {
+          width: 18px;
+          height: 18px;
+          border-radius: 4px;
+          background: currentColor;
+          opacity: 0.7;
+          flex-shrink: 0;
+        }
+
+        /* main — เพิ่ม padding ด้านล่างเพื่อไม่ให้ content ซ่อนหลัง bottom nav */
+        .main {
+          padding: 16px 12px 76px;
+        }
+
+        /* grids */
+        .grid4 {
+          grid-template-columns: 1fr 1fr;
+        }
+        .grid3 {
+          grid-template-columns: 1fr 1fr;
+        }
+        .grid2 {
+          grid-template-columns: 1fr;
+        }
+
+        /* score card */
+        .score-card {
+          flex-direction: column;
+          text-align: center;
+          gap: 12px;
+        }
+
+        /* charts */
+        .chart-box {
+          height: 160px;
+        }
+
+        /* forms */
+        .form-row {
+          flex-direction: column;
+        }
+        .form-row input,
+        .form-row select {
+          width: 100% !important;
+        }
+
+        /* table horizontal scroll */
+        .table-wrap {
+          overflow-x: auto;
+        }
+        table {
+          min-width: 480px;
+        }
+
+        /* modal */
+        .modal {
+          width: 95vw;
+          padding: 20px 16px;
+        }
+
+        /* fab — ยกขึ้นเหนือ bottom nav */
+        .fab {
+          bottom: 68px;
+          right: 16px;
+          padding: 12px 18px;
+          font-size: 13px;
+        }
+
+        /* stat card */
+        .stat-val {
+          font-size: 16px;
+        }
+
+        /* ach grid */
+        .ach-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        /* workout */
+        .workout-today {
+          padding: 14px;
+        }
+
+        /* streak dots smaller */
+        .streak-dot {
+          width: 22px;
+          height: 22px;
+          font-size: 9px;
+        }
+
+        /* page title */
+        .page-title {
+          font-size: 18px;
+        }
+
+        /* meal */
+        .meal-inner {
+          padding: 12px;
+        }
+
+        /* shake form */
+        #s-milk,
+        #s-banana,
+        #s-oat,
+        #s-pb {
+          width: 100% !important;
+        }
+
+        /* day schedule */
+        .day-row {
+          grid-template-columns: 70px 1fr;
+          gap: 8px;
+        }
+
+        /* macro row */
+        .macro-row {
+          gap: 8px;
+        }
+        .macro-pill {
+          padding: 6px 10px;
+        }
+      }
+
+      @media (max-width: 400px) {
+        .grid4 {
+          grid-template-columns: 1fr 1fr;
+        }
+        .nav-item {
+          padding: 6px 6px;
+          min-width: 50px;
+          font-size: 9px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <!-- ══ SIDEBAR ══ -->
+      <aside class="sidebar">
+        <div class="logo">
+          <div class="logo-title">PANITHAN</div>
+          <div class="logo-sub">Weight Gain Tracker</div>
+        </div>
+
+        <div class="nav-group">MAIN</div>
+        <div class="nav-item active" onclick="nav(this, 'dashboard')">
+          <span class="nav-dot"></span>Dashboard
+        </div>
+        <div class="nav-item" onclick="nav(this, 'today')">
+          <span class="nav-dot"></span>Today
+        </div>
+
+        <div class="nav-group">TRACKING</div>
+        <div class="nav-item" onclick="nav(this, 'weight')">
+          <span class="nav-dot"></span>Weight
+        </div>
+        <div class="nav-item" onclick="nav(this, 'meal')">
+          <span class="nav-dot"></span>Meals
+        </div>
+        <div class="nav-item" onclick="nav(this, 'workout')">
+          <span class="nav-dot"></span>Workout
+        </div>
+
+        <div class="nav-group">PROGRESS</div>
+        <div class="nav-item" onclick="nav(this, 'analytics')">
+          <span class="nav-dot"></span>Analytics
+        </div>
+        <div class="nav-item" onclick="nav(this, 'history')">
+          <span class="nav-dot"></span>History
+        </div>
+        <div class="nav-item" onclick="nav(this, 'achievements')">
+          <span class="nav-dot"></span>Achievements
+        </div>
+      </aside>
+
+      <!-- ══ MAIN ══ -->
+      <main class="main">
+        <!-- ████ PAGE: DASHBOARD ████ -->
+        <div class="page active" id="page-dashboard">
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub" id="db-date">วันนี้</div>
+
+          <!-- Daily Score -->
+          <div class="score-card" id="scoreCard">
+            <div class="score-ring">
+              <svg width="80" height="80" viewBox="0 0 80 80">
+                <circle
+                  cx="40"
+                  cy="40"
+                  r="32"
+                  fill="none"
+                  stroke="var(--surface2)"
+                  stroke-width="8"
+                />
+                <circle
+                  id="scoreArc"
+                  cx="40"
+                  cy="40"
+                  r="32"
+                  fill="none"
+                  stroke="var(--green)"
+                  stroke-width="8"
+                  stroke-linecap="round"
+                  stroke-dasharray="201"
+                  stroke-dashoffset="201"
+                />
+              </svg>
+              <div class="score-ring-num" id="scoreNum">0</div>
+            </div>
+            <div class="score-info">
+              <div class="score-title" id="scoreTitle">Today Score</div>
+              <div class="score-msg" id="scoreMsg">
+                เริ่มติ๊กรายการวันนี้เพื่อเพิ่มคะแนน
+              </div>
+            </div>
+          </div>
+
+          <!-- Next Task -->
+          <div class="next-card" id="nextTaskCard">
+            <div class="next-label">▸ NEXT TASK</div>
+            <div class="next-title" id="nextTaskTitle">—</div>
+            <div class="next-sub" id="nextTaskSub">—</div>
+          </div>
+
+          <!-- Stats row -->
+          <div class="grid4">
+            <div class="stat-card">
+              <div class="stat-label">น้ำหนักล่าสุด</div>
+              <div class="stat-val c-green" id="db-last">—</div>
+              <div class="stat-sub" id="db-trend">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">เหลืออีก</div>
+              <div class="stat-val c-blue" id="db-left">—</div>
+              <div class="stat-sub" id="db-eta">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Checklist วันนี้</div>
+              <div class="stat-val c-amber" id="db-check">0/9</div>
+              <div class="stat-sub">รายการสำเร็จ</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Streak</div>
+              <div class="stat-val c-purple" id="db-streak">0</div>
+              <div class="stat-sub">วันติดต่อกัน</div>
+            </div>
+          </div>
+
+          <!-- Recommendations -->
+          <div class="card" style="margin-bottom: 16px">
+            <div class="card-title">💡 Smart Recommendations</div>
+            <div id="recContainer">
+              <div class="rec-info">
+                <div class="rec-label">GETTING STARTED</div>
+                บันทึกน้ำหนักวันแรกเพื่อเริ่มระบบ AI recommendations
+              </div>
+            </div>
+          </div>
+
+          <!-- Checklist preview -->
+          <div class="card">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+              "
+            >
+              <div class="card-title" style="margin-bottom: 0">
+                ☑ Checklist วันนี้
+              </div>
+              <div style="font-size: 12px; color: var(--muted)">
+                สำเร็จ <span id="db-doneCount">0</span>/<span id="db-totalCount"
+                  >9</span
+                >
+              </div>
+            </div>
+            <div class="prog-wrap">
+              <div
+                class="prog-fill"
+                id="db-progBar"
+                style="width: 0%; background: var(--green)"
+              ></div>
+            </div>
+            <div id="db-checkPreview"></div>
+          </div>
+        </div>
+
+        <!-- ████ PAGE: TODAY ████ -->
+        <div class="page" id="page-today">
+          <div class="page-title">Today</div>
+          <div class="page-sub" id="today-date">—</div>
+
+          <!-- Auto Plan -->
+          <div class="card" style="margin-bottom: 16px">
+            <div class="card-title">🎯 Daily Plan วันนี้</div>
+            <div id="dailyPlan"></div>
+          </div>
+
+          <!-- Full Checklist -->
+          <div class="card">
+            <div class="card-title">☑ Checklist ประจำวัน</div>
+            <div id="todayChecklist"></div>
+          </div>
+        </div>
+
+        <!-- ████ PAGE: WEIGHT ████ -->
+        <div class="page" id="page-weight">
+          <div class="page-title">⚖ บันทึกน้ำหนัก</div>
+          <div class="page-sub">ชั่งทุกเช้า หลังเข้าห้องน้ำ ก่อนกิน</div>
+
+          <div class="card" style="margin-bottom: 16px">
+            <div class="card-title">ตั้งค่า</div>
+            <div
+              style="
+                display: flex;
+                gap: 16px;
+                flex-wrap: wrap;
+                align-items: flex-end;
+              "
+            >
+              <div class="field">
+                <label>น้ำหนักเริ่มต้น (kg)</label>
+                <input
+                  type="number"
+                  id="startInput"
+                  step="0.1"
+                  placeholder="40"
+                  style="width: 110px"
+                  oninput="
+                    saveGoals();
+                    renderAll();
+                  "
+                />
+              </div>
+              <div class="field">
+                <label>เป้าหมาย (kg)</label>
+                <input
+                  type="number"
+                  id="goalInput"
+                  step="0.1"
+                  placeholder="50"
+                  style="width: 110px"
+                  oninput="
+                    saveGoals();
+                    renderAll();
+                  "
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom: 16px">
+            <div class="card-title">เพิ่มข้อมูล</div>
+            <div class="form-row">
+              <div class="field">
+                <label>วันที่</label
+                ><input type="date" id="wDate" style="width: 150px" />
+              </div>
+              <div class="field">
+                <label>น้ำหนัก (kg)</label
+                ><input
+                  type="number"
+                  id="wKg"
+                  step="0.1"
+                  placeholder="68.5"
+                  style="width: 110px"
+                />
+              </div>
+              <div class="field">
+                <label>หมายเหตุ</label
+                ><input
+                  type="text"
+                  id="wNote"
+                  placeholder="เช่น หลังออกกำลังกาย"
+                  style="width: 200px"
+                />
+              </div>
+              <button class="btn btn-green" onclick="addWeight()">
+                + บันทึก
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>วันที่</th>
+                  <th>น้ำหนัก</th>
+                  <th>เปลี่ยนแปลง</th>
+                  <th>หมายเหตุ</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="wTable">
+                <tr>
+                  <td colspan="5" class="empty">ยังไม่มีข้อมูล</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ████ PAGE: ANALYTICS ████ -->
+        <div class="page" id="page-analytics">
+          <div class="page-title">📈 Weight Analytics</div>
+          <div class="page-sub">แนวโน้มและสถิติน้ำหนัก</div>
+
+          <div class="grid4">
+            <div class="stat-card">
+              <div class="stat-label">น้ำหนักล่าสุด</div>
+              <div class="stat-val" id="an-last">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">เพิ่มขึ้นรวม</div>
+              <div class="stat-val c-green" id="an-total">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">เฉลี่ย/วัน</div>
+              <div class="stat-val c-green" id="an-avg">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Weekly Gain</div>
+              <div class="stat-val c-amber" id="an-week">—</div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom: 16px">
+            <div class="card-title">Daily Score — 30 วันล่าสุด</div>
+            <div class="chart-box"><canvas id="scoreChart"></canvas></div>
+          </div>
+
+          <div class="card" style="margin-bottom: 16px">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+              "
+            >
+              <div class="card-title" style="margin-bottom: 0">กราฟน้ำหนัก</div>
+              <div id="an-trendBadge"></div>
+            </div>
+            <div class="chart-box"><canvas id="wChart"></canvas></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">7-Day Moving Average</div>
+            <div class="chart-box"><canvas id="avgChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- ████ PAGE: MEAL ████ -->
+        <div class="page" id="page-meal">
+          <div class="page-title">🍱 Meal Planner</div>
+          <div class="page-sub">เป้าหมาย 2,400–2,700 kcal/วัน</div>
+
+          <!-- Auto Plan -->
+          <div class="card" style="margin-bottom: 16px" id="mealPlanCard">
+            <div class="card-title">🤖 Auto Generated Plan</div>
+            <div id="autoPlanContent"></div>
+          </div>
+
+          <!-- Shake Calculator -->
+          <div class="card" style="margin-bottom: 16px">
+            <div class="card-title">🥤 Shake Calculator</div>
+            <div class="form-row" style="margin-bottom: 12px">
+              <div class="field">
+                <label>นม (ml)</label
+                ><input
+                  type="number"
+                  id="s-milk"
+                  value="500"
+                  style="width: 90px"
+                  oninput="calcShake()"
+                />
+              </div>
+              <div class="field">
+                <label>กล้วย (ลูก)</label
+                ><input
+                  type="number"
+                  id="s-banana"
+                  value="2"
+                  style="width: 80px"
+                  oninput="calcShake()"
+                />
+              </div>
+              <div class="field">
+                <label>ข้าวโอ๊ต (g)</label
+                ><input
+                  type="number"
+                  id="s-oat"
+                  value="80"
+                  style="width: 80px"
+                  oninput="calcShake()"
+                />
+              </div>
+              <div class="field">
+                <label>เนยถั่ว (ช้อน)</label
+                ><input
+                  type="number"
+                  id="s-pb"
+                  value="2"
+                  style="width: 80px"
+                  oninput="calcShake()"
+                />
+              </div>
+            </div>
+            <div class="shake-result" id="shakeResult"></div>
+          </div>
+
+          <!-- Meals -->
+          <div class="meal-block">
+            <div class="meal-time-label">▸ เช้า — 07:00</div>
+            <div class="meal-inner">
+              <div class="meal-header">
+                <span class="meal-name">มื้อเช้า</span
+                ><span class="kcal-tag">~600 kcal</span>
+              </div>
+              <ul class="meal-list">
+                <li>ข้าว 2 จาน</li>
+                <li>ไข่ 3 ฟอง (ต้ม/ดาว/เจียว)</li>
+                <li>นม 1 กล่อง (250 ml)</li>
+                <li style="color: var(--green)">+ กล้วย 1 ลูก (~90 kcal)</li>
+              </ul>
+            </div>
+          </div>
+          <div class="meal-block">
+            <div class="meal-time-label">▸ ช่วงสาย — 10:00 ⭐ สำคัญที่สุด</div>
+            <div class="meal-inner shake-inner">
+              <div class="meal-header">
+                <span class="meal-name">Mass Shake</span
+                ><span class="kcal-tag">~700 kcal</span>
+              </div>
+              <ul class="meal-list">
+                <li>นม 500 ml</li>
+                <li>กล้วย 2 ลูก</li>
+                <li>ข้าวโอ๊ต 80g</li>
+                <li>เนยถั่ว 2 ช้อนโต๊ะ</li>
+              </ul>
+              <div class="tip-box">
+                ปั่นรวมกัน — กินง่าย แคลสูง เป็นมื้อที่สำคัญที่สุด
+              </div>
+            </div>
+          </div>
+          <div class="meal-block">
+            <div class="meal-time-label">▸ กลางวัน — 12:00</div>
+            <div class="meal-inner">
+              <div class="meal-header">
+                <span class="meal-name">มื้อกลางวัน</span
+                ><span class="kcal-tag">~700 kcal</span>
+              </div>
+              <ul class="meal-list">
+                <li>ข้าว 2 จาน</li>
+                <li>เนื้อสัตว์ 2 อย่าง</li>
+                <li>ไข่เพิ่ม 1–2 ฟอง</li>
+              </ul>
+            </div>
+          </div>
+          <div class="meal-block">
+            <div class="meal-time-label">▸ เย็น — 18:00</div>
+            <div class="meal-inner">
+              <div class="meal-header">
+                <span class="meal-name">มื้อเย็น</span
+                ><span class="kcal-tag">~600 kcal</span>
+              </div>
+              <ul class="meal-list">
+                <li>ข้าว 2 จาน</li>
+                <li>หมู/ไก่/ปลา</li>
+                <li>ผักนิดหน่อย</li>
+              </ul>
+            </div>
+          </div>
+          <div class="meal-block">
+            <div class="meal-time-label">▸ ก่อนนอน — 21:30</div>
+            <div class="meal-inner">
+              <div class="meal-header">
+                <span class="meal-name">มื้อดึก</span
+                ><span class="kcal-tag">~300 kcal</span>
+              </div>
+              <ul class="meal-list">
+                <li>นม 1 แก้วใหญ่</li>
+                <li>กล้วย 1 ลูก หรือขนมปังทาเนยถั่ว</li>
+              </ul>
+              <div class="tip-box">
+                ห้ามนอนหิว — ร่างกายสร้างกล้ามเนื้อตอนหลับ
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">KCAL BREAKDOWN</div>
+            <div class="kbar-row">
+              <div class="kbar-label">เช้า</div>
+              <div class="kbar-track">
+                <div
+                  class="kbar-fill"
+                  style="width: 22%; background: var(--green)"
+                ></div>
+              </div>
+              <div class="kbar-num">600</div>
+            </div>
+            <div class="kbar-row">
+              <div class="kbar-label">Shake สาย</div>
+              <div class="kbar-track">
+                <div
+                  class="kbar-fill"
+                  style="width: 26%; background: var(--blue)"
+                ></div>
+              </div>
+              <div class="kbar-num">700</div>
+            </div>
+            <div class="kbar-row">
+              <div class="kbar-label">กลางวัน</div>
+              <div class="kbar-track">
+                <div
+                  class="kbar-fill"
+                  style="width: 26%; background: var(--green)"
+                ></div>
+              </div>
+              <div class="kbar-num">700</div>
+            </div>
+            <div class="kbar-row">
+              <div class="kbar-label">เย็น</div>
+              <div class="kbar-track">
+                <div
+                  class="kbar-fill"
+                  style="width: 22%; background: var(--amber)"
+                ></div>
+              </div>
+              <div class="kbar-num">600</div>
+            </div>
+            <div class="kbar-row">
+              <div class="kbar-label">ก่อนนอน</div>
+              <div class="kbar-track">
+                <div
+                  class="kbar-fill"
+                  style="width: 11%; background: var(--muted)"
+                ></div>
+              </div>
+              <div class="kbar-num">300</div>
+            </div>
+            <div
+              style="
+                text-align: right;
+                font-family: var(--mono);
+                font-size: 13px;
+                color: var(--green);
+                margin-top: 10px;
+                font-weight: 700;
+              "
+            >
+              รวม ~2,900 kcal/วัน
+            </div>
+          </div>
+        </div>
+
+        <!-- ████ PAGE: WORKOUT ████ -->
+        <div class="page" id="page-workout">
+          <div class="page-title">💪 Workout</div>
+          <div class="page-sub">ไม่ต้องฟิตเนส ทำที่บ้านได้</div>
+
+          <!-- Today's workout -->
+          <div class="workout-today" id="todayWorkout"></div>
+
+          <!-- Full schedule -->
+          <div class="card">
+            <div class="card-title">ตารางทั้งสัปดาห์</div>
+            <div class="day-row">
+              <div>
+                <div class="day-name">จันทร์</div>
+                <div class="day-type">
+                  <span class="badge badge-push">Push</span>
+                </div>
+              </div>
+              <ul style="list-style: none">
+                <li class="ex-item">
+                  <span>วิดพื้น</span><span class="ex-sets">4×max</span>
+                </li>
+                <li class="ex-item">
+                  <span>Chair dip</span><span class="ex-sets">4×max</span>
+                </li>
+                <li class="ex-item">
+                  <span>Pike push-up</span><span class="ex-sets">3×max</span>
+                </li>
+              </ul>
+            </div>
+            <div class="day-row">
+              <div>
+                <div class="day-name">อังคาร</div>
+                <div class="day-type">
+                  <span class="badge badge-leg">Leg</span>
+                </div>
+              </div>
+              <ul style="list-style: none">
+                <li class="ex-item">
+                  <span>Squat</span><span class="ex-sets">5×15</span>
+                </li>
+                <li class="ex-item">
+                  <span>Lunge</span><span class="ex-sets">4×12/ข้าง</span>
+                </li>
+                <li class="ex-item">
+                  <span>Calf raise</span><span class="ex-sets">5×20</span>
+                </li>
+              </ul>
+            </div>
+            <div class="day-row">
+              <div>
+                <div class="day-name">พุธ</div>
+                <div class="day-type">
+                  <span class="badge badge-rest">พัก</span>
+                </div>
+              </div>
+              <div
+                style="font-size: 13px; color: var(--muted); padding-top: 4px"
+              >
+                พักผ่อน นอนหลับให้พอ กินให้ครบ
+              </div>
+            </div>
+            <div class="day-row">
+              <div>
+                <div class="day-name">พฤหัส</div>
+                <div class="day-type">
+                  <span class="badge badge-pull">Pull</span>
+                </div>
+              </div>
+              <ul style="list-style: none">
+                <li class="ex-item">
+                  <span>ดึงข้อ</span><span class="ex-sets">4×max</span>
+                </li>
+                <li class="ex-item">
+                  <span>Row กระเป๋าหนัก</span><span class="ex-sets">4×12</span>
+                </li>
+                <li class="ex-item">
+                  <span>Reverse snow angel</span
+                  ><span class="ex-sets">3×15</span>
+                </li>
+                <li class="ex-item">
+                  <span>Curl แกลลอนน้ำ</span><span class="ex-sets">3×12</span>
+                </li>
+              </ul>
+            </div>
+            <div class="day-row">
+              <div>
+                <div class="day-name">ศุกร์</div>
+                <div class="day-type">
+                  <span class="badge badge-full">Full</span>
+                </div>
+              </div>
+              <ul style="list-style: none">
+                <li class="ex-item">
+                  <span>วิดพื้น+Squat+Plank+Dip วน 4 รอบ</span>
+                </li>
+              </ul>
+            </div>
+            <div class="day-row">
+              <div>
+                <div class="day-name">เสาร์/อา.</div>
+                <div class="day-type">
+                  <span class="badge badge-rest">พัก</span>
+                </div>
+              </div>
+              <div
+                style="font-size: 13px; color: var(--muted); padding-top: 4px"
+              >
+                พัก 1 วัน อีกวันเดิน/ยืดตัว
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ████ PAGE: HISTORY ████ -->
+        <div class="page" id="page-history">
+          <div class="page-title">📋 History</div>
+          <div class="page-sub">บันทึกรายวันย้อนหลัง</div>
+          <div id="historyList"></div>
+        </div>
+
+        <!-- ████ PAGE: ACHIEVEMENTS ████ -->
+        <div class="page" id="page-achievements">
+          <div class="page-title">🏆 Achievements</div>
+          <div class="page-sub">ความสำเร็จและ streak</div>
+
+          <div class="card" style="margin-bottom: 16px">
+            <div class="card-title">Streak — 30 วันล่าสุด</div>
+            <div class="streak-row" id="streakRow"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Achievements</div>
+            <div class="ach-grid" id="achGrid"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- FAB -->
+    <button class="fab" onclick="openModal()">＋ บันทึกน้ำหนัก</button>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+      <div class="modal" style="position: relative">
+        <button class="modal-close" onclick="closeModal()">✕</button>
+        <div class="modal-title">⚖ บันทึกน้ำหนักวันนี้</div>
+        <div class="modal-sub" id="modal-date">—</div>
+        <div class="field" style="margin-bottom: 12px">
+          <label>น้ำหนัก (kg)</label>
+          <input
+            type="number"
+            id="m-kg"
+            step="0.1"
+            placeholder="เช่น 68.5"
+            style="width: 100%"
+          />
+        </div>
+        <div class="field" style="margin-bottom: 12px">
+          <label>หมายเหตุ (ไม่บังคับ)</label>
+          <input
+            type="text"
+            id="m-note"
+            placeholder="เช่น หลังออกกำลังกาย"
+            style="width: 100%"
+          />
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
+          <button class="btn btn-green" onclick="addWeightModal()">
+            บันทึก
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ══════════════════════════════════════════════════
+      // DATA LAYER
+      // ══════════════════════════════════════════════════
+      const TODAY = new Date().toISOString().split("T")[0];
+
+      function ld(key, def) {
+        try {
+          return JSON.parse(localStorage.getItem(key) ?? "null") ?? def;
+        } catch {
+          return def;
+        }
+      }
+      function sv(key, val) {
+        localStorage.setItem(key, JSON.stringify(val));
+      }
+
+      function loadEntries() {
+        return ld("wEntries", []);
+      }
+      function saveEntries(a) {
+        sv("wEntries", a);
+      }
+      function loadGoals() {
+        return ld("goals", { start: "", goal: "" });
+      }
+      function saveGoals() {
+        sv("goals", {
+          start: document.getElementById("startInput").value,
+          goal: document.getElementById("goalInput").value,
+        });
+      }
+      function loadCheckState() {
+        const s = ld("checkState", { date: "", done: {} });
+        if (s.date !== TODAY) return { date: TODAY, done: {} };
+        return s;
+      }
+      function saveCheckState(s) {
+        sv("checkState", s);
+      }
+      function loadWorkoutDone() {
+        return ld("wkDone_" + TODAY, {});
+      }
+      function saveWorkoutDone(d) {
+        sv("wkDone_" + TODAY, d);
+      }
+
+      // ══════════════════════════════════════════════════
+      // NAVIGATION
+      // ══════════════════════════════════════════════════
+      function nav(el, pageId) {
+        document
+          .querySelectorAll(".nav-item")
+          .forEach((n) => n.classList.remove("active"));
+        document
+          .querySelectorAll(".page")
+          .forEach((p) => p.classList.remove("active"));
+        el.classList.add("active");
+        document.getElementById("page-" + pageId).classList.add("active");
+        if (pageId === "analytics") {
+          renderCharts();
+          renderScoreChart();
+        }
+        if (pageId === "history") renderHistory();
+      }
+
+      // ══════════════════════════════════════════════════
+      // CHECKLIST DATA
+      // ══════════════════════════════════════════════════
+      const CL = [
+        {
+          id: "c1",
+          text: "ชั่งน้ำหนักเช้า",
+          time: "06:30",
+          kcal: 0,
+          cat: "weight",
+        },
+        {
+          id: "c2",
+          text: "มื้อเช้า (ข้าว+ไข่+นม)",
+          time: "07:00",
+          kcal: 600,
+          cat: "meal",
+        },
+        {
+          id: "c3",
+          text: "Mass Shake ช่วงสาย",
+          time: "10:00",
+          kcal: 700,
+          cat: "shake",
+        },
+        {
+          id: "c4",
+          text: "มื้อกลางวัน",
+          time: "12:30",
+          kcal: 700,
+          cat: "meal",
+        },
+        {
+          id: "c5",
+          text: "ดื่มน้ำ 2L+",
+          time: "ตลอดวัน",
+          kcal: 0,
+          cat: "water",
+        },
+        {
+          id: "c6",
+          text: "ออกกำลังกาย",
+          time: "17:00",
+          kcal: 0,
+          cat: "workout",
+        },
+        { id: "c7", text: "มื้อเย็น", time: "18:00", kcal: 600, cat: "meal" },
+        {
+          id: "c8",
+          text: "มื้อก่อนนอน (นม+กล้วย)",
+          time: "21:30",
+          kcal: 300,
+          cat: "meal",
+        },
+        {
+          id: "c9",
+          text: "นอน 7+ ชั่วโมง",
+          time: "22:30",
+          kcal: 0,
+          cat: "sleep",
+        },
+      ];
+
+      // ══════════════════════════════════════════════════
+      // WORKOUT DATA
+      // ══════════════════════════════════════════════════
+      const WORKOUT_PLAN = {
+        1: {
+          type: "Push",
+          badge: "badge-push",
+          exercises: [
+            { n: "วิดพื้น", s: "4 เซ็ต × max" },
+            { n: "Chair dip", s: "4 เซ็ต × max" },
+            { n: "Pike push-up", s: "3 เซ็ต × max" },
+          ],
+        },
+        2: {
+          type: "Leg",
+          badge: "badge-leg",
+          exercises: [
+            { n: "Squat", s: "5 เซ็ต × 15" },
+            { n: "Lunge", s: "4 เซ็ต × 12/ข้าง" },
+            { n: "Calf raise", s: "5 เซ็ต × 20" },
+          ],
+        },
+        3: { type: "Rest", badge: "badge-rest", exercises: [] },
+        4: {
+          type: "Pull",
+          badge: "badge-pull",
+          exercises: [
+            { n: "ดึงข้อ", s: "4 เซ็ต × max" },
+            { n: "Row กระเป๋าหนัก", s: "4 เซ็ต × 12" },
+            { n: "Reverse snow angel", s: "3 เซ็ต × 15" },
+            { n: "Curl แกลลอนน้ำ", s: "3 เซ็ต × 12" },
+          ],
+        },
+        5: {
+          type: "Full",
+          badge: "badge-full",
+          exercises: [{ n: "วิดพื้น+Squat+Plank+Dip วน 4 รอบ", s: "" }],
+        },
+        6: { type: "Rest", badge: "badge-rest", exercises: [] },
+        0: { type: "Rest", badge: "badge-rest", exercises: [] },
+      };
+      const DAY_TH = [
+        "อาทิตย์",
+        "จันทร์",
+        "อังคาร",
+        "พุธ",
+        "พฤหัสบดี",
+        "ศุกร์",
+        "เสาร์",
+      ];
+
+      // ══════════════════════════════════════════════════
+      // ACHIEVEMENTS
+      // ══════════════════════════════════════════════════
+      const ACHIEVEMENTS = [
+        {
+          id: "first",
+          icon: "🌱",
+          name: "First Step",
+          desc: "บันทึกน้ำหนักครั้งแรก",
+          check: (e, s) => e.length >= 1,
+        },
+        {
+          id: "week",
+          icon: "📅",
+          name: "One Week",
+          desc: "บันทึกครบ 7 วัน",
+          check: (e, s) => e.length >= 7,
+        },
+        {
+          id: "gain1",
+          icon: "📈",
+          name: "+1 kg",
+          desc: "น้ำหนักเพิ่มขึ้น 1 kg",
+          check: (e, s) => e.length > 1 && e[e.length - 1].kg - e[0].kg >= 1,
+        },
+        {
+          id: "gain3",
+          icon: "🏋️",
+          name: "+3 kg",
+          desc: "น้ำหนักเพิ่มขึ้น 3 kg",
+          check: (e, s) => e.length > 1 && e[e.length - 1].kg - e[0].kg >= 3,
+        },
+        {
+          id: "streak7",
+          icon: "🔥",
+          name: "7-Day Streak",
+          desc: "ทำ checklist 7 วันติดต่อกัน",
+          check: (e, s) => calcStreak() >= 7,
+        },
+        {
+          id: "shake14",
+          icon: "🥤",
+          name: "Shake Master",
+          desc: "ไม่ขาด shake 14 วัน",
+          check: (e, s) => calcShakeStreak() >= 14,
+        },
+        {
+          id: "check7",
+          icon: "✅",
+          name: "Consistent",
+          desc: "กินครบ 7 วันติดต่อกัน",
+          check: (e, s) => calcStreak() >= 7,
+        },
+        {
+          id: "target",
+          icon: "🎯",
+          name: "Goal Reached",
+          desc: "ถึงเป้าหมายน้ำหนัก",
+          check: (e, s) => {
+            const g = parseFloat(s.goal);
+            const last = e.length ? e[e.length - 1].kg : 0;
+            return g && last >= g;
+          },
+        },
+        {
+          id: "month",
+          icon: "📆",
+          name: "One Month",
+          desc: "บันทึกครบ 30 วัน",
+          check: (e, s) => e.length >= 30,
+        },
+      ];
+
+      // ══════════════════════════════════════════════════
+      // HELPERS
+      // ══════════════════════════════════════════════════
+      function fmtDate(d) {
+        const [y, m, dd] = d.split("-");
+        return `${dd}/${m}/${y}`;
+      }
+      function todayDow() {
+        return new Date().getDay();
+      } // 0=Sun
+
+      function calcStreak() {
+        const hist = ld("checkHistory", {});
+        let streak = 0;
+        const d = new Date();
+        for (let i = 0; i < 60; i++) {
+          const key = d.toISOString().split("T")[0];
+          const h = hist[key];
+          const count =
+            typeof h === "object" ? h.count : typeof h === "number" ? h : 0;
+          if (count >= 5) streak++;
+          else break;
+          d.setDate(d.getDate() - 1);
+        }
+        return streak;
+      }
+
+      function calcShakeStreak() {
+        const hist = ld("checkHistory", {});
+        let streak = 0;
+        const d = new Date();
+        for (let i = 0; i < 60; i++) {
+          const key = d.toISOString().split("T")[0];
+          const shakes = ld("shakeHit_" + key, false);
+          if (shakes) streak++;
+          else break;
+          d.setDate(d.getDate() - 1);
+        }
+        return streak;
+      }
+
+      function kcalFromCheck() {
+        const state = loadCheckState();
+        return CL.filter((c) => state.done[c.id]).reduce(
+          (a, c) => a + c.kcal,
+          0,
+        );
+      }
+
+      // ══════════════════════════════════════════════════
+      // DAILY SCORE
+      // ══════════════════════════════════════════════════
+      function calcScore() {
+        const state = loadCheckState();
+        const done = Object.values(state.done).filter(Boolean).length;
+        return Math.round((done / CL.length) * 100);
+      }
+
+      function renderScore() {
+        const score = calcScore();
+        const circ = 201; // 2*PI*32
+        const offset = circ - (circ * score) / 100;
+        document.getElementById("scoreArc").style.strokeDashoffset = offset;
+        let col = "var(--red)";
+        if (score >= 60) col = "var(--amber)";
+        if (score >= 80) col = "var(--green)";
+        document.getElementById("scoreArc").style.stroke = col;
+        document.getElementById("scoreNum").textContent = score;
+        document.getElementById("scoreNum").style.color = col;
+        let title = "Today Score",
+          msg = "";
+        if (score === 100) {
+          title = "🎉 Perfect Day!";
+          msg = "คุณทำได้ครบทุกอย่างวันนี้!";
+        } else if (score >= 80) {
+          title = "🔥 Almost There";
+          msg = "ยอดเยี่ยม! เหลืออีกนิดเดียว";
+        } else if (score >= 50) {
+          title = "💪 Keep Going";
+          msg = "กำลังดี ทำต่อไปเลย";
+        } else if (score > 0) {
+          title = "🌱 Just Started";
+          msg = "เริ่มดีแล้ว ติ๊กรายการเพิ่มเลย";
+        } else {
+          title = "Today Score";
+          msg = "เริ่มติ๊กรายการวันนี้เพื่อเพิ่มคะแนน";
+        }
+        document.getElementById("scoreTitle").textContent = title;
+        document.getElementById("scoreMsg").textContent = msg;
+      }
+
+      // ══════════════════════════════════════════════════
+      // NEXT TASK
+      // ══════════════════════════════════════════════════
+      function renderNextTask() {
+        const state = loadCheckState();
+        const next = CL.find((c) => !state.done[c.id]);
+        if (!next) {
+          document.getElementById("nextTaskTitle").textContent =
+            "🎉 เสร็จทุกอย่างแล้ววันนี้!";
+          document.getElementById("nextTaskSub").textContent =
+            "สุดยอด — พักผ่อนได้เลย";
+        } else {
+          document.getElementById("nextTaskTitle").textContent = next.text;
+          document.getElementById("nextTaskSub").textContent =
+            "เวลา " + next.time + (next.kcal ? ` · +${next.kcal} kcal` : "");
+        }
+      }
+
+      // ══════════════════════════════════════════════════
+      // RECOMMENDATIONS (AI-style)
+      // ══════════════════════════════════════════════════
+      function renderRecs() {
+        const entries = loadEntries();
+        const goals = loadGoals();
+        const recs = [];
+
+        if (entries.length === 0) {
+          recs.push({
+            cls: "rec-info",
+            label: "GETTING STARTED",
+            msg: "บันทึกน้ำหนักวันแรกเพื่อเริ่มระบบ recommendations",
+          });
+        } else {
+          const last = entries[entries.length - 1];
+          const goal = parseFloat(goals.goal) || null;
+          const start = parseFloat(goals.start) || null;
+
+          // Stagnant weight
+          if (entries.length >= 14) {
+            const avg14 = entries.slice(-14).reduce((a, e) => a + e.kg, 0) / 14;
+            const avg7 = entries.slice(-7).reduce((a, e) => a + e.kg, 0) / 7;
+            if (Math.abs(avg7 - avg14) < 0.2) {
+              recs.push({
+                cls: "rec-warn",
+                label: "⚠ น้ำหนักคงที่",
+                msg: `น้ำหนักคงที่มา ${entries.length >= 14 ? "14" : "7"} วัน — แนะนำเพิ่ม +300 kcal/วัน หรือเพิ่ม shake อีกแก้ว`,
+              });
+            }
+          }
+
+          // Trend
+          if (entries.length >= 3) {
+            const recent = entries.slice(-3);
+            const gain = recent[2].kg - recent[0].kg;
+            if (gain > 0) {
+              recs.push({
+                cls: "rec-good",
+                label: "📈 TREND",
+                msg: `น้ำหนักเพิ่มขึ้น +${gain.toFixed(1)} kg ใน 3 วันล่าสุด — ไปได้ดีมาก!`,
+              });
+            } else if (gain < -0.3) {
+              recs.push({
+                cls: "rec-bad",
+                label: "📉 TREND",
+                msg: `น้ำหนักลดลง ${gain.toFixed(1)} kg — อาจต้องเพิ่มมื้อดึกหรือ shake`,
+              });
+            }
+          }
+
+          // ETA
+          if (goal && start && entries.length >= 2) {
+            const days = entries.length;
+            const totalGain = last.kg - entries[0].kg;
+            const perDay = totalGain / Math.max(days - 1, 1);
+            const left = goal - last.kg;
+            if (left > 0 && perDay > 0) {
+              const eta = Math.round(left / perDay);
+              recs.push({
+                cls: "rec-info",
+                label: "🎯 ETA",
+                msg: `ถ้าเพิ่มได้ ${perDay.toFixed(2)} kg/วันต่อเนื่อง จะถึง ${goal} kg ใน ~${eta} วัน`,
+              });
+            }
+          }
+
+          // Shake streak
+          const shakeStreak = calcShakeStreak();
+          if (shakeStreak === 0) {
+            recs.push({
+              cls: "rec-bad",
+              label: "🥤 SHAKE",
+              msg: "คุณยังไม่ได้กด shake วันนี้ — นี่คือมื้อสำคัญที่สุด!",
+            });
+          } else if (shakeStreak >= 7) {
+            recs.push({
+              cls: "rec-good",
+              label: "🥤 SHAKE STREAK",
+              msg: `ไม่ขาด Shake ${shakeStreak} วันติดต่อกัน — ยอดเยี่ยม!`,
+            });
+          }
+        }
+
+        if (recs.length === 0)
+          recs.push({
+            cls: "rec-good",
+            label: "✓ ALL GOOD",
+            msg: "ทุกอย่างดูดีมาก ทำต่อไปเลย!",
+          });
+        document.getElementById("recContainer").innerHTML = recs
+          .map(
+            (r) =>
+              `<div class="rec-card ${r.cls}"><div class="rec-label">${r.label}</div>${r.msg}</div>`,
+          )
+          .join("");
+      }
+
+      // ══════════════════════════════════════════════════
+      // CHECKLIST RENDER
+      // ══════════════════════════════════════════════════
+      function renderChecklist(containerId, limit = null) {
+        const state = loadCheckState();
+        const items = limit ? CL.slice(0, limit) : CL;
+        const el = document.getElementById(containerId);
+        el.innerHTML = items
+          .map((item) => {
+            const done = !!state.done[item.id];
+            return `<div class="check-item${done ? " done" : ""}" onclick="toggleCheck('${item.id}')">
       <div class="check-box"></div>
       <span class="check-text">${item.text}</span>
       <span class="check-time">${item.time}</span>
     </div>`;
-  }).join('');
-}
+          })
+          .join("");
+      }
 
-function toggleCheck(id){
-  const state=loadCheckState();
-  state.done[id]=!state.done[id];
-  // Track shake
-  if(id==='c3') sv('shakeHit_'+TODAY, !!state.done[id]);
-  saveCheckState(state);
-  // Save to history
-  const hist=ld('checkHistory',{});
-  hist[TODAY]=Object.values(state.done).filter(Boolean).length;
-  sv('checkHistory',hist);
-  renderAll();
-}
+      function toggleCheck(id) {
+        const state = loadCheckState();
+        state.done[id] = !state.done[id];
+        if (id === "c3") sv("shakeHit_" + TODAY, !!state.done[id]);
+        saveCheckState(state);
+        // บันทึก history แบบละเอียด — จำนวน + รายการที่ทำ + น้ำหนักวันนี้
+        const hist = ld("checkHistory", {});
+        const doneCount = Object.values(state.done).filter(Boolean).length;
+        const doneIds = Object.keys(state.done).filter((k) => state.done[k]);
+        const entries = loadEntries();
+        const todayEntry = entries.find((e) => e.date === TODAY);
+        hist[TODAY] = {
+          count: doneCount,
+          total: CL.length,
+          score: Math.round((doneCount / CL.length) * 100),
+          done: doneIds,
+          kg: todayEntry ? todayEntry.kg : null,
+          ts: Date.now(),
+        };
+        sv("checkHistory", hist);
+        renderAll();
+      }
 
-function renderCheckStats(){
-  const state=loadCheckState();
-  const done=Object.values(state.done).filter(Boolean).length;
-  const total=CL.length;
-  const pct=done/total*100;
-  ['db-doneCount',''].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=done; });
-  document.getElementById('db-doneCount').textContent=done;
-  document.getElementById('db-totalCount').textContent=total;
-  document.getElementById('db-progBar').style.width=pct+'%';
-  document.getElementById('db-check').textContent=done+'/'+total;
-}
+      function renderCheckStats() {
+        const state = loadCheckState();
+        const done = Object.values(state.done).filter(Boolean).length;
+        const total = CL.length;
+        const pct = (done / total) * 100;
+        ["db-doneCount", ""].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = done;
+        });
+        document.getElementById("db-doneCount").textContent = done;
+        document.getElementById("db-totalCount").textContent = total;
+        document.getElementById("db-progBar").style.width = pct + "%";
+        document.getElementById("db-check").textContent = done + "/" + total;
+      }
 
-// ══════════════════════════════════════════════════
-// WEIGHT
-// ══════════════════════════════════════════════════
-function addWeight(){
-  const date=document.getElementById('wDate').value;
-  const kg=parseFloat(document.getElementById('wKg').value);
-  const note=document.getElementById('wNote').value.trim();
-  if(!date||isNaN(kg)){ alert('กรุณากรอกวันที่และน้ำหนัก'); return; }
-  const entries=loadEntries();
-  const exists=entries.findIndex(e=>e.date===date);
-  if(exists>=0) entries[exists]={date,kg,note};
-  else entries.push({date,kg,note});
-  entries.sort((a,b)=>a.date.localeCompare(b.date));
-  saveEntries(entries);
-  document.getElementById('wKg').value='';
-  document.getElementById('wNote').value='';
-  renderAll();
-}
+      // ══════════════════════════════════════════════════
+      // WEIGHT
+      // ══════════════════════════════════════════════════
+      function addWeight() {
+        const date = document.getElementById("wDate").value;
+        const kg = parseFloat(document.getElementById("wKg").value);
+        const note = document.getElementById("wNote").value.trim();
+        if (!date || isNaN(kg)) {
+          alert("กรุณากรอกวันที่และน้ำหนัก");
+          return;
+        }
+        const entries = loadEntries();
+        const exists = entries.findIndex((e) => e.date === date);
+        if (exists >= 0) entries[exists] = { date, kg, note };
+        else entries.push({ date, kg, note });
+        entries.sort((a, b) => a.date.localeCompare(b.date));
+        saveEntries(entries);
+        document.getElementById("wKg").value = "";
+        document.getElementById("wNote").value = "";
+        renderAll();
+      }
 
-function addWeightModal(){
-  const kg=parseFloat(document.getElementById('m-kg').value);
-  const note=document.getElementById('m-note').value.trim();
-  if(isNaN(kg)){ alert('กรุณากรอกน้ำหนัก'); return; }
-  const entries=loadEntries();
-  const exists=entries.findIndex(e=>e.date===TODAY);
-  if(exists>=0) entries[exists]={date:TODAY,kg,note};
-  else entries.push({date:TODAY,kg,note});
-  entries.sort((a,b)=>a.date.localeCompare(b.date));
-  saveEntries(entries);
-  closeModal();
-  renderAll();
-}
+      function addWeightModal() {
+        const kg = parseFloat(document.getElementById("m-kg").value);
+        const note = document.getElementById("m-note").value.trim();
+        if (isNaN(kg)) {
+          alert("กรุณากรอกน้ำหนัก");
+          return;
+        }
+        const entries = loadEntries();
+        const exists = entries.findIndex((e) => e.date === TODAY);
+        if (exists >= 0) entries[exists] = { date: TODAY, kg, note };
+        else entries.push({ date: TODAY, kg, note });
+        entries.sort((a, b) => a.date.localeCompare(b.date));
+        saveEntries(entries);
+        // อัปเดต kg ใน checkHistory ด้วย
+        const hist = ld("checkHistory", {});
+        if (hist[TODAY]) {
+          if (typeof hist[TODAY] === "object") hist[TODAY].kg = kg;
+          else
+            hist[TODAY] = {
+              count: hist[TODAY],
+              total: CL.length,
+              score: Math.round((hist[TODAY] / CL.length) * 100),
+              done: [],
+              kg,
+            };
+        } else {
+          const state = loadCheckState();
+          const doneIds = Object.keys(state.done).filter((k) => state.done[k]);
+          const doneCount = doneIds.length;
+          hist[TODAY] = {
+            count: doneCount,
+            total: CL.length,
+            score: Math.round((doneCount / CL.length) * 100),
+            done: doneIds,
+            kg,
+            ts: Date.now(),
+          };
+        }
+        sv("checkHistory", hist);
+        closeModal();
+        renderAll();
+      }
 
-function deleteEntry(idx){
-  const entries=loadEntries();
-  entries.splice(idx,1);
-  saveEntries(entries);
-  renderAll();
-}
+      function deleteEntry(idx) {
+        const entries = loadEntries();
+        entries.splice(idx, 1);
+        saveEntries(entries);
+        renderAll();
+      }
 
-function renderWeightTable(){
-  const entries=loadEntries();
-  const tbody=document.getElementById('wTable');
-  if(!entries.length){
-    tbody.innerHTML=`<tr><td colspan="5"><div class="empty">
+      function renderWeightTable() {
+        const entries = loadEntries();
+        const tbody = document.getElementById("wTable");
+        if (!entries.length) {
+          tbody.innerHTML = `<tr><td colspan="5"><div class="empty">
       <div class="empty-icon">⚖️</div>
       <div class="empty-title">เริ่มบันทึกน้ำหนักวันแรกของคุณ</div>
       <div class="empty-sub">กดปุ่ม <strong>+ บันทึกน้ำหนัก</strong> มุมล่างขวาได้เลย</div>
     </div></td></tr>`;
-    return;
-  }
-  tbody.innerHTML=entries.slice().reverse().map((e,ri)=>{
-    const realIdx=entries.length-1-ri;
-    const prev=realIdx>0?entries[realIdx-1].kg:null;
-    let badge='<span class="badge badge-eq">—</span>';
-    if(prev!==null){ const d=e.kg-prev; if(d>0) badge=`<span class="badge badge-up">▲ +${d.toFixed(1)}</span>`; else if(d<0) badge=`<span class="badge badge-dn">▼ ${d.toFixed(1)}</span>`; }
-    return `<tr><td>${fmtDate(e.date)}</td><td style="font-family:var(--mono);font-weight:700">${e.kg.toFixed(1)} kg</td><td>${badge}</td><td style="color:var(--muted2)">${e.note||'—'}</td><td><button class="del-btn" onclick="deleteEntry(${realIdx})">✕</button></td></tr>`;
-  }).join('');
-}
-
-// ══════════════════════════════════════════════════
-// DASHBOARD STATS
-// ══════════════════════════════════════════════════
-function renderDashStats(){
-  const entries=loadEntries();
-  const goals=loadGoals();
-  const goal=parseFloat(goals.goal)||null;
-
-  if(entries.length){
-    const last=entries[entries.length-1];
-    document.getElementById('db-last').textContent=last.kg.toFixed(1)+' kg';
-
-    // weekly trend
-    const w=entries.filter(e=>{ const d=new Date(e.date); const now=new Date(); return (now-d)/(86400000)<=7; });
-    if(w.length>=2){
-      const gain=w[w.length-1].kg-w[0].kg;
-      const dir=gain>0?'↑ +':'↓ ';
-      document.getElementById('db-trend').textContent=dir+Math.abs(gain).toFixed(1)+' kg สัปดาห์นี้';
-    } else { document.getElementById('db-trend').textContent='ยังไม่มีข้อมูล 7 วัน'; }
-
-    if(goal){
-      const left=goal-last.kg;
-      document.getElementById('db-left').textContent=(left>0?(left.toFixed(1)+' kg'):' ถึงเป้าแล้ว! 🎉');
-      if(entries.length>=2){
-        const perDay=(last.kg-entries[0].kg)/Math.max(entries.length-1,1);
-        const eta=perDay>0?Math.round(left/perDay):null;
-        document.getElementById('db-eta').textContent=eta?`~${eta} วันถึงเป้า`:'คำนวณ ETA...';
+          return;
+        }
+        tbody.innerHTML = entries
+          .slice()
+          .reverse()
+          .map((e, ri) => {
+            const realIdx = entries.length - 1 - ri;
+            const prev = realIdx > 0 ? entries[realIdx - 1].kg : null;
+            let badge = '<span class="badge badge-eq">—</span>';
+            if (prev !== null) {
+              const d = e.kg - prev;
+              if (d > 0)
+                badge = `<span class="badge badge-up">▲ +${d.toFixed(1)}</span>`;
+              else if (d < 0)
+                badge = `<span class="badge badge-dn">▼ ${d.toFixed(1)}</span>`;
+            }
+            return `<tr><td>${fmtDate(e.date)}</td><td style="font-family:var(--mono);font-weight:700">${e.kg.toFixed(1)} kg</td><td>${badge}</td><td style="color:var(--muted2)">${e.note || "—"}</td><td><button class="del-btn" onclick="deleteEntry(${realIdx})">✕</button></td></tr>`;
+          })
+          .join("");
       }
-    } else { document.getElementById('db-left').textContent='—'; document.getElementById('db-eta').textContent='ตั้งเป้าหมายก่อน'; }
-  } else {
-    ['db-last','db-left'].forEach(id=>document.getElementById(id).textContent='—');
-    document.getElementById('db-trend').textContent='ยังไม่มีข้อมูล';
-    document.getElementById('db-eta').textContent='บันทึกน้ำหนักก่อน';
-  }
-  document.getElementById('db-streak').textContent=calcStreak();
-}
 
-// ══════════════════════════════════════════════════
-// ANALYTICS STATS + CHARTS
-// ══════════════════════════════════════════════════
-let chartW=null, chartAvg=null;
+      // ══════════════════════════════════════════════════
+      // DASHBOARD STATS
+      // ══════════════════════════════════════════════════
+      function renderDashStats() {
+        const entries = loadEntries();
+        const goals = loadGoals();
+        const goal = parseFloat(goals.goal) || null;
 
-function renderCharts(){
-  const entries=loadEntries();
-  const goals=loadGoals();
-  const goal=parseFloat(goals.goal)||null;
+        if (entries.length) {
+          const last = entries[entries.length - 1];
+          document.getElementById("db-last").textContent =
+            last.kg.toFixed(1) + " kg";
 
-  if(entries.length===0){ return; }
-  const last=entries[entries.length-1].kg;
-  const first=entries[0].kg;
-  const diff=last-first;
-  const days=entries.length;
-  document.getElementById('an-last').textContent=last.toFixed(1)+' kg';
-  document.getElementById('an-total').textContent=(diff>=0?'+':'')+diff.toFixed(1)+' kg';
-  document.getElementById('an-avg').textContent=(diff/Math.max(days-1,1)).toFixed(2)+' kg/วัน';
+          // weekly trend
+          const w = entries.filter((e) => {
+            const d = new Date(e.date);
+            const now = new Date();
+            return (now - d) / 86400000 <= 7;
+          });
+          if (w.length >= 2) {
+            const gain = w[w.length - 1].kg - w[0].kg;
+            const dir = gain > 0 ? "↑ +" : "↓ ";
+            document.getElementById("db-trend").textContent =
+              dir + Math.abs(gain).toFixed(1) + " kg สัปดาห์นี้";
+          } else {
+            document.getElementById("db-trend").textContent =
+              "ยังไม่มีข้อมูล 7 วัน";
+          }
 
-  // weekly gain
-  const w7=entries.filter(e=>(new Date()-new Date(e.date))/86400000<=7);
-  if(w7.length>=2){ const wg=w7[w7.length-1].kg-w7[0].kg; document.getElementById('an-week').textContent=(wg>=0?'+':'')+wg.toFixed(1)+' kg'; }
-  else document.getElementById('an-week').textContent='—';
+          if (goal) {
+            const left = goal - last.kg;
+            document.getElementById("db-left").textContent =
+              left > 0 ? left.toFixed(1) + " kg" : " ถึงเป้าแล้ว! 🎉";
+            if (entries.length >= 2) {
+              const perDay =
+                (last.kg - entries[0].kg) / Math.max(entries.length - 1, 1);
+              const eta = perDay > 0 ? Math.round(left / perDay) : null;
+              document.getElementById("db-eta").textContent = eta
+                ? `~${eta} วันถึงเป้า`
+                : "คำนวณ ETA...";
+            }
+          } else {
+            document.getElementById("db-left").textContent = "—";
+            document.getElementById("db-eta").textContent = "ตั้งเป้าหมายก่อน";
+          }
+        } else {
+          ["db-last", "db-left"].forEach(
+            (id) => (document.getElementById(id).textContent = "—"),
+          );
+          document.getElementById("db-trend").textContent = "ยังไม่มีข้อมูล";
+          document.getElementById("db-eta").textContent = "บันทึกน้ำหนักก่อน";
+        }
+        document.getElementById("db-streak").textContent = calcStreak();
+      }
 
-  // Trend badge
-  const tb=document.getElementById('an-trendBadge');
-  if(entries.length>=7){
-    const recent7=entries.slice(-7);
-    const wkGain=recent7[6].kg-recent7[0].kg;
-    if(wkGain>0) tb.innerHTML=`<span class="trend trend-up">↑ +${wkGain.toFixed(1)} kg this week</span>`;
-    else if(wkGain<0) tb.innerHTML=`<span class="trend trend-dn">↓ ${wkGain.toFixed(1)} kg this week</span>`;
-    else tb.innerHTML=`<span class="trend trend-eq">→ stable this week</span>`;
-  }
+      // ══════════════════════════════════════════════════
+      // ANALYTICS STATS + CHARTS
+      // ══════════════════════════════════════════════════
+      let chartW = null,
+        chartAvg = null;
 
-  const labels=entries.map(e=>{ const p=e.date.split('-'); return p[2]+'/'+p[1]; });
-  const data=entries.map(e=>e.kg);
+      function renderCharts() {
+        const entries = loadEntries();
+        const goals = loadGoals();
+        const goal = parseFloat(goals.goal) || null;
 
-  // Main chart
-  const ds=[{label:'น้ำหนัก (kg)',data,borderColor:'#22c55e',backgroundColor:'rgba(34,197,94,0.08)',tension:0.3,pointBackgroundColor:'#22c55e',pointRadius:3}];
-  if(goal) ds.push({label:'เป้าหมาย',data:data.map(()=>goal),borderColor:'#3b82f6',borderDash:[5,5],pointRadius:0,tension:0});
+        if (entries.length === 0) {
+          return;
+        }
+        const last = entries[entries.length - 1].kg;
+        const first = entries[0].kg;
+        const diff = last - first;
+        const days = entries.length;
+        document.getElementById("an-last").textContent =
+          last.toFixed(1) + " kg";
+        document.getElementById("an-total").textContent =
+          (diff >= 0 ? "+" : "") + diff.toFixed(1) + " kg";
+        document.getElementById("an-avg").textContent =
+          (diff / Math.max(days - 1, 1)).toFixed(2) + " kg/วัน";
 
-  const ctx=document.getElementById('wChart').getContext('2d');
-  if(chartW) chartW.destroy();
-  chartW=new Chart(ctx,{type:'line',data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9595a4',font:{size:11}}}},scales:{x:{ticks:{color:'#6b6b7a',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#6b6b7a',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+        // weekly gain
+        const w7 = entries.filter(
+          (e) => (new Date() - new Date(e.date)) / 86400000 <= 7,
+        );
+        if (w7.length >= 2) {
+          const wg = w7[w7.length - 1].kg - w7[0].kg;
+          document.getElementById("an-week").textContent =
+            (wg >= 0 ? "+" : "") + wg.toFixed(1) + " kg";
+        } else document.getElementById("an-week").textContent = "—";
 
-  // 7-day moving avg
-  const avgData=entries.map((_,i)=>{
-    const slice=entries.slice(Math.max(0,i-6),i+1);
-    return +(slice.reduce((a,e)=>a+e.kg,0)/slice.length).toFixed(2);
-  });
-  const ctx2=document.getElementById('avgChart').getContext('2d');
-  if(chartAvg) chartAvg.destroy();
-  chartAvg=new Chart(ctx2,{type:'line',data:{labels,datasets:[{label:'น้ำหนักจริง',data,borderColor:'rgba(34,197,94,0.3)',pointRadius:0,tension:0.3},{label:'7-Day Avg',data:avgData,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.06)',tension:0.4,pointRadius:0,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9595a4',font:{size:11}}}},scales:{x:{ticks:{color:'#6b6b7a',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#6b6b7a',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}}}});
-}
+        // Trend badge
+        const tb = document.getElementById("an-trendBadge");
+        if (entries.length >= 7) {
+          const recent7 = entries.slice(-7);
+          const wkGain = recent7[6].kg - recent7[0].kg;
+          if (wkGain > 0)
+            tb.innerHTML = `<span class="trend trend-up">↑ +${wkGain.toFixed(1)} kg this week</span>`;
+          else if (wkGain < 0)
+            tb.innerHTML = `<span class="trend trend-dn">↓ ${wkGain.toFixed(1)} kg this week</span>`;
+          else
+            tb.innerHTML = `<span class="trend trend-eq">→ stable this week</span>`;
+        }
 
-// ══════════════════════════════════════════════════
-// AUTO DAILY PLAN
-// ══════════════════════════════════════════════════
-function renderDailyPlan(){
-  const goals=loadGoals();
-  const entries=loadEntries();
-  const current=entries.length?entries[entries.length-1].kg:parseFloat(goals.start)||null;
-  const target=parseFloat(goals.goal)||null;
-  const el=document.getElementById('dailyPlan');
-  const el2=document.getElementById('autoPlanContent');
+        const labels = entries.map((e) => {
+          const p = e.date.split("-");
+          return p[2] + "/" + p[1];
+        });
+        const data = entries.map((e) => e.kg);
 
-  if(!current||!target){
-    const msg=`<div class="empty"><div class="empty-icon">🤖</div><div class="empty-title">ตั้งค่าน้ำหนักเริ่มต้นและเป้าหมายก่อน</div><div class="empty-sub">ไปที่หน้า Weight แล้วกรอกน้ำหนักเริ่มต้น + เป้าหมาย</div></div>`;
-    if(el) el.innerHTML=msg;
-    if(el2) el2.innerHTML=msg;
-    return;
-  }
+        // Main chart
+        const ds = [
+          {
+            label: "น้ำหนัก (kg)",
+            data,
+            borderColor: "#22c55e",
+            backgroundColor: "rgba(34,197,94,0.08)",
+            tension: 0.3,
+            pointBackgroundColor: "#22c55e",
+            pointRadius: 3,
+          },
+        ];
+        if (goal)
+          ds.push({
+            label: "เป้าหมาย",
+            data: data.map(() => goal),
+            borderColor: "#3b82f6",
+            borderDash: [5, 5],
+            pointRadius: 0,
+            tension: 0,
+          });
 
-  const diff=target-current;
-  const kcalTarget=Math.round(2500+(diff>5?300:0));
-  const protein=Math.round(current*1.6);
-  const carb=Math.round((kcalTarget*0.5)/4);
-  const fat=Math.round((kcalTarget*0.25)/9);
-  const weeklyGoal=diff>5?0.5:0.3;
+        const ctx = document.getElementById("wChart").getContext("2d");
+        if (chartW) chartW.destroy();
+        chartW = new Chart(ctx, {
+          type: "line",
+          data: { labels, datasets: ds },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: "#9595a4", font: { size: 11 } } },
+            },
+            scales: {
+              x: {
+                ticks: { color: "#6b6b7a", font: { size: 10 } },
+                grid: { color: "rgba(255,255,255,0.04)" },
+              },
+              y: {
+                ticks: { color: "#6b6b7a", font: { size: 10 } },
+                grid: { color: "rgba(255,255,255,0.04)" },
+              },
+            },
+          },
+        });
 
-  const html=`
+        // 7-day moving avg
+        const avgData = entries.map((_, i) => {
+          const slice = entries.slice(Math.max(0, i - 6), i + 1);
+          return +(slice.reduce((a, e) => a + e.kg, 0) / slice.length).toFixed(
+            2,
+          );
+        });
+        const ctx2 = document.getElementById("avgChart").getContext("2d");
+        if (chartAvg) chartAvg.destroy();
+        chartAvg = new Chart(ctx2, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "น้ำหนักจริง",
+                data,
+                borderColor: "rgba(34,197,94,0.3)",
+                pointRadius: 0,
+                tension: 0.3,
+              },
+              {
+                label: "7-Day Avg",
+                data: avgData,
+                borderColor: "#f59e0b",
+                backgroundColor: "rgba(245,158,11,0.06)",
+                tension: 0.4,
+                pointRadius: 0,
+                borderWidth: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: "#9595a4", font: { size: 11 } } },
+            },
+            scales: {
+              x: {
+                ticks: { color: "#6b6b7a", font: { size: 10 } },
+                grid: { color: "rgba(255,255,255,0.04)" },
+              },
+              y: {
+                ticks: { color: "#6b6b7a", font: { size: 10 } },
+                grid: { color: "rgba(255,255,255,0.04)" },
+              },
+            },
+          },
+        });
+      }
+
+      // ══════════════════════════════════════════════════
+      // AUTO DAILY PLAN
+      // ══════════════════════════════════════════════════
+      function renderDailyPlan() {
+        const goals = loadGoals();
+        const entries = loadEntries();
+        const current = entries.length
+          ? entries[entries.length - 1].kg
+          : parseFloat(goals.start) || null;
+        const target = parseFloat(goals.goal) || null;
+        const el = document.getElementById("dailyPlan");
+        const el2 = document.getElementById("autoPlanContent");
+
+        if (!current || !target) {
+          const msg = `<div class="empty"><div class="empty-icon">🤖</div><div class="empty-title">ตั้งค่าน้ำหนักเริ่มต้นและเป้าหมายก่อน</div><div class="empty-sub">ไปที่หน้า Weight แล้วกรอกน้ำหนักเริ่มต้น + เป้าหมาย</div></div>`;
+          if (el) el.innerHTML = msg;
+          if (el2) el2.innerHTML = msg;
+          return;
+        }
+
+        const diff = target - current;
+        const kcalTarget = Math.round(2500 + (diff > 5 ? 300 : 0));
+        const protein = Math.round(current * 1.6);
+        const carb = Math.round((kcalTarget * 0.5) / 4);
+        const fat = Math.round((kcalTarget * 0.25) / 9);
+        const weeklyGoal = diff > 5 ? 0.5 : 0.3;
+
+        const html = `
     <div class="grid3" style="margin-bottom:12px">
       <div class="stat-card"><div class="stat-label">เป้าแคลวันนี้</div><div class="stat-val c-green">${kcalTarget.toLocaleString()}</div><div class="stat-sub">kcal/วัน</div></div>
-      <div class="stat-card"><div class="stat-label">Protein target</div><div class="stat-val c-blue">${protein}g</div><div class="stat-sub">~${Math.round(protein/current*100)}% body weight</div></div>
+      <div class="stat-card"><div class="stat-label">Protein target</div><div class="stat-val c-blue">${protein}g</div><div class="stat-sub">~${Math.round((protein / current) * 100)}% body weight</div></div>
       <div class="stat-card"><div class="stat-label">Weekly gain</div><div class="stat-val c-amber">${weeklyGoal} kg</div><div class="stat-sub">เป้าหมายต่อสัปดาห์</div></div>
     </div>
     <div style="font-size:13px;color:var(--muted2);line-height:1.8">
@@ -1121,166 +2760,342 @@ function renderDailyPlan(){
       <div style="margin-top:6px;font-size:12px;color:var(--muted)">คำนวณจากน้ำหนักปัจจุบัน ${current.toFixed(1)} kg → เป้า ${target} kg (เพิ่ม ${diff.toFixed(1)} kg)</div>
     </div>`;
 
-  if(el) el.innerHTML=html;
-  if(el2) el2.innerHTML=html;
-}
+        if (el) el.innerHTML = html;
+        if (el2) el2.innerHTML = html;
+      }
 
-// ══════════════════════════════════════════════════
-// TODAY'S WORKOUT
-// ══════════════════════════════════════════════════
-function renderTodayWorkout(){
-  const dow=todayDow();
-  const plan=WORKOUT_PLAN[dow];
-  const done=loadWorkoutDone();
-  const dayName=DAY_TH[dow];
-  const el=document.getElementById('todayWorkout');
+      // ══════════════════════════════════════════════════
+      // TODAY'S WORKOUT
+      // ══════════════════════════════════════════════════
+      function renderTodayWorkout() {
+        const dow = todayDow();
+        const plan = WORKOUT_PLAN[dow];
+        const done = loadWorkoutDone();
+        const dayName = DAY_TH[dow];
+        const el = document.getElementById("todayWorkout");
 
-  if(plan.type==='Rest'){
-    el.innerHTML=`<div style="font-size:13px;font-family:var(--mono);color:var(--purple);margin-bottom:8px">วันนี้ — ${dayName}</div>
+        if (plan.type === "Rest") {
+          el.innerHTML = `<div style="font-size:13px;font-family:var(--mono);color:var(--purple);margin-bottom:8px">วันนี้ — ${dayName}</div>
     <div style="font-size:20px;font-weight:600;margin-bottom:4px">🛌 วันพัก</div>
     <div style="font-size:13px;color:var(--muted2)">พักผ่อน นอนหลับให้พอ กินให้ครบ — ร่างกายสร้างกล้ามตอนนี้</div>`;
-    return;
-  }
+          return;
+        }
 
-  const doneCount=plan.exercises.filter((_,i)=>done[i]).length;
-  const pct=Math.round(doneCount/plan.exercises.length*100);
+        const doneCount = plan.exercises.filter((_, i) => done[i]).length;
+        const pct = Math.round((doneCount / plan.exercises.length) * 100);
 
-  el.innerHTML=`
+        el.innerHTML = `
     <div style="font-size:13px;font-family:var(--mono);color:var(--purple);margin-bottom:8px">วันนี้ — ${dayName}</div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div style="font-size:20px;font-weight:600">${plan.type} Day <span class="badge ${plan.badge}" style="font-size:12px;vertical-align:middle">${plan.type}</span></div>
       <div style="font-family:var(--mono);font-size:13px;color:var(--purple)">${doneCount}/${plan.exercises.length} done</div>
     </div>
     <div class="prog-wrap" style="margin-bottom:12px"><div class="prog-fill" style="width:${pct}%;background:var(--purple)"></div></div>
-    ${plan.exercises.map((ex,i)=>`
+    ${plan.exercises
+      .map(
+        (ex, i) => `
     <div class="ex-item" onclick="toggleWorkout(${i})">
-      <div class="ex-check${done[i]?' done':''}" id="wk-${i}"></div>
-      <span style="${done[i]?'text-decoration:line-through;color:var(--muted)':''}">${ex.n}</span>
+      <div class="ex-check${done[i] ? " done" : ""}" id="wk-${i}"></div>
+      <span style="${done[i] ? "text-decoration:line-through;color:var(--muted)" : ""}">${ex.n}</span>
       <span class="ex-sets">${ex.s}</span>
-    </div>`).join('')}`;
-}
+    </div>`,
+      )
+      .join("")}`;
+      }
 
-function toggleWorkout(i){
-  const done=loadWorkoutDone();
-  done[i]=!done[i];
-  saveWorkoutDone(done);
-  renderTodayWorkout();
-}
+      function toggleWorkout(i) {
+        const done = loadWorkoutDone();
+        done[i] = !done[i];
+        saveWorkoutDone(done);
+        renderTodayWorkout();
+      }
 
-// ══════════════════════════════════════════════════
-// ACHIEVEMENTS
-// ══════════════════════════════════════════════════
-function renderAchievements(){
-  const entries=loadEntries();
-  const goals=loadGoals();
-  const grid=document.getElementById('achGrid');
-  grid.innerHTML=ACHIEVEMENTS.map(a=>{
-    const unlocked=a.check(entries,goals);
-    return `<div class="ach-card ${unlocked?'unlocked':'locked'}">
+      // ══════════════════════════════════════════════════
+      // HISTORY PAGE
+      // ══════════════════════════════════════════════════
+      function renderHistory() {
+        const hist = ld("checkHistory", {});
+        const entries = loadEntries();
+        const container = document.getElementById("historyList");
+        if (!container) return;
+        const weightMap = {};
+        entries.forEach((e) => {
+          weightMap[e.date] = e.kg;
+        });
+        const days = Object.keys(hist)
+          .sort((a, b) => b.localeCompare(a))
+          .slice(0, 60);
+        if (days.length === 0) {
+          container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">ยังไม่มีประวัติ</div><div class="empty-sub">เริ่มติ๊ก checklist วันนี้เพื่อบันทึกประวัติ</div></div>`;
+          return;
+        }
+        container.innerHTML = days
+          .map((date) => {
+            const h = hist[date];
+            const count =
+              typeof h === "object" ? h.count : typeof h === "number" ? h : 0;
+            const total = typeof h === "object" ? h.total : CL.length;
+            const score =
+              typeof h === "object"
+                ? h.score
+                : Math.round((count / CL.length) * 100);
+            const doneIds = typeof h === "object" && h.done ? h.done : [];
+            const kg = weightMap[date] || (typeof h === "object" ? h.kg : null);
+            const [y, m, d] = date.split("-");
+            const dateObj = new Date(date + "T00:00:00");
+            const dayName = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."][
+              dateObj.getDay()
+            ];
+            const isToday = date === TODAY;
+            let scoreColor = "var(--red)";
+            if (score >= 60) scoreColor = "var(--amber)";
+            if (score >= 80) scoreColor = "var(--green)";
+            const doneItems = doneIds
+              .map((id) => {
+                const item = CL.find((c) => c.id === id);
+                return item
+                  ? `<span style="font-size:11px;background:var(--green-dim);color:var(--green);padding:2px 8px;border-radius:20px;margin:2px 2px 0 0;display:inline-block">${item.text}</span>`
+                  : "";
+              })
+              .join("");
+            return `<div class="card" style="margin-bottom:10px;${isToday ? "border-color:rgba(34,197,94,0.3)" : ""}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div>
+          <div style="font-size:13px;font-weight:600">${isToday ? "🟢 วันนี้ — " : ""}${d}/${m}/${y} <span style="color:var(--muted);font-size:11px">${dayName}</span></div>
+          ${kg ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">⚖ ${parseFloat(kg).toFixed(1)} kg</div>` : ""}
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:${scoreColor}">${score}</div>
+          <div style="font-size:10px;color:var(--muted)">${count}/${total} รายการ</div>
+        </div>
+      </div>
+      <div class="prog-wrap" style="margin-bottom:8px"><div class="prog-fill" style="width:${score}%;background:${scoreColor}"></div></div>
+      ${doneItems ? `<div style="margin-top:4px">${doneItems}</div>` : `<div style="font-size:12px;color:var(--muted)">ไม่มีข้อมูลรายการ</div>`}
+    </div>`;
+          })
+          .join("");
+      }
+
+      // ══════════════════════════════════════════════════
+      // SCORE CHART (30 วัน)
+      // ══════════════════════════════════════════════════
+      let chartScore = null;
+      function renderScoreChart() {
+        const hist = ld("checkHistory", {});
+        const labels = [],
+          data = [];
+        for (let i = 29; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const key = d.toISOString().split("T")[0];
+          const h = hist[key];
+          const score =
+            h != null
+              ? typeof h === "object"
+                ? h.score
+                : Math.round((h / CL.length) * 100)
+              : null;
+          labels.push(d.getDate() + "/" + String(d.getMonth() + 1));
+          data.push(score);
+        }
+        const ctx = document.getElementById("scoreChart");
+        if (!ctx) return;
+        if (chartScore) chartScore.destroy();
+        chartScore = new Chart(ctx.getContext("2d"), {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Daily Score (%)",
+                data,
+                backgroundColor: data.map((v) =>
+                  v === null
+                    ? "transparent"
+                    : v >= 80
+                      ? "rgba(34,197,94,0.6)"
+                      : v >= 60
+                        ? "rgba(245,158,11,0.6)"
+                        : "rgba(239,68,68,0.5)",
+                ),
+                borderColor: data.map((v) =>
+                  v === null
+                    ? "transparent"
+                    : v >= 80
+                      ? "#22c55e"
+                      : v >= 60
+                        ? "#f59e0b"
+                        : "#ef4444",
+                ),
+                borderWidth: 1,
+                borderRadius: 4,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (c) => (c.raw === null ? "ไม่มีข้อมูล" : c.raw + "%"),
+                },
+              },
+            },
+            scales: {
+              x: {
+                ticks: { color: "#6b6b7a", font: { size: 9 } },
+                grid: { display: false },
+              },
+              y: {
+                min: 0,
+                max: 100,
+                ticks: {
+                  color: "#6b6b7a",
+                  font: { size: 10 },
+                  callback: (v) => v + "%",
+                },
+                grid: { color: "rgba(255,255,255,0.04)" },
+              },
+            },
+          },
+        });
+      }
+
+      // ══════════════════════════════════════════════════
+      // ACHIEVEMENTS
+      // ══════════════════════════════════════════════════
+      function renderAchievements() {
+        const entries = loadEntries();
+        const goals = loadGoals();
+        const grid = document.getElementById("achGrid");
+        grid.innerHTML = ACHIEVEMENTS.map((a) => {
+          const unlocked = a.check(entries, goals);
+          return `<div class="ach-card ${unlocked ? "unlocked" : "locked"}">
       <div class="ach-icon">${a.icon}</div>
       <div class="ach-name">${a.name}</div>
       <div class="ach-desc">${a.desc}</div>
     </div>`;
-  }).join('');
+        }).join("");
 
-  // Streak dots
-  const hist=ld('checkHistory',{});
-  const streakEl=document.getElementById('streakRow');
-  const dots=[];
-  for(let i=29;i>=0;i--){
-    const d=new Date();
-    d.setDate(d.getDate()-i);
-    const key=d.toISOString().split('T')[0];
-    const isToday=key===TODAY;
-    const hit=hist[key]&&hist[key]>=5;
-    dots.push(`<div class="streak-dot ${hit?'hit':'miss'}${isToday?' today':''}" title="${key}">${d.getDate()}</div>`);
-  }
-  streakEl.innerHTML=dots.join('');
-}
+        // Streak dots
+        const hist = ld("checkHistory", {});
+        const streakEl = document.getElementById("streakRow");
+        const dots = [];
+        for (let i = 29; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const key = d.toISOString().split("T")[0];
+          const isToday = key === TODAY;
+          const h = hist[key];
+          const count =
+            typeof h === "object" ? h.count : typeof h === "number" ? h : 0;
+          const hit = count >= 5;
+          dots.push(
+            `<div class="streak-dot ${hit ? "hit" : "miss"}${isToday ? " today" : ""}" title="${key}">${d.getDate()}</div>`,
+          );
+        }
+        streakEl.innerHTML = dots.join("");
+      }
 
-// ══════════════════════════════════════════════════
-// SHAKE CALCULATOR
-// ══════════════════════════════════════════════════
-function calcShake(){
-  const milk=parseFloat(document.getElementById('s-milk').value)||0;
-  const banana=parseFloat(document.getElementById('s-banana').value)||0;
-  const oat=parseFloat(document.getElementById('s-oat').value)||0;
-  const pb=parseFloat(document.getElementById('s-pb').value)||0;
+      // ══════════════════════════════════════════════════
+      // SHAKE CALCULATOR
+      // ══════════════════════════════════════════════════
+      function calcShake() {
+        const milk = parseFloat(document.getElementById("s-milk").value) || 0;
+        const banana =
+          parseFloat(document.getElementById("s-banana").value) || 0;
+        const oat = parseFloat(document.getElementById("s-oat").value) || 0;
+        const pb = parseFloat(document.getElementById("s-pb").value) || 0;
 
-  const kcal=Math.round(milk*0.61 + banana*90 + oat*3.89 + pb*94);
-  const protein=Math.round(milk*0.033 + banana*1.1 + oat*0.17 + pb*3.5);
-  const carb=Math.round(milk*0.047 + banana*23 + oat*0.66 + pb*3.5);
-  const fat=Math.round(milk*0.0033 + banana*0.3 + oat*0.07 + pb*8);
+        const kcal = Math.round(
+          milk * 0.61 + banana * 90 + oat * 3.89 + pb * 94,
+        );
+        const protein = Math.round(
+          milk * 0.033 + banana * 1.1 + oat * 0.17 + pb * 3.5,
+        );
+        const carb = Math.round(
+          milk * 0.047 + banana * 23 + oat * 0.66 + pb * 3.5,
+        );
+        const fat = Math.round(
+          milk * 0.0033 + banana * 0.3 + oat * 0.07 + pb * 8,
+        );
 
-  document.getElementById('shakeResult').innerHTML=`
+        document.getElementById("shakeResult").innerHTML = `
     <div style="font-weight:600;font-size:15px;color:var(--green);margin-bottom:8px">รวม ${kcal} kcal</div>
     <div class="macro-row">
       <div class="macro-pill"><div class="macro-val">${protein}g</div><div class="macro-label">Protein</div></div>
       <div class="macro-pill"><div class="macro-val c-amber">${carb}g</div><div class="macro-label">Carbs</div></div>
       <div class="macro-pill"><div class="macro-val c-blue">${fat}g</div><div class="macro-label">Fat</div></div>
     </div>`;
-}
+      }
 
-// ══════════════════════════════════════════════════
-// MODAL
-// ══════════════════════════════════════════════════
-function openModal(){
-  document.getElementById('modalOverlay').classList.add('open');
-  document.getElementById('modal-date').textContent='วันที่ '+fmtDate(TODAY);
-  document.getElementById('m-kg').value='';
-  document.getElementById('m-note').value='';
-  setTimeout(()=>document.getElementById('m-kg').focus(),100);
-}
-function closeModal(e){
-  if(e&&e.target!==document.getElementById('modalOverlay')) return;
-  document.getElementById('modalOverlay').classList.remove('open');
-}
+      // ══════════════════════════════════════════════════
+      // MODAL
+      // ══════════════════════════════════════════════════
+      function openModal() {
+        document.getElementById("modalOverlay").classList.add("open");
+        document.getElementById("modal-date").textContent =
+          "วันที่ " + fmtDate(TODAY);
+        document.getElementById("m-kg").value = "";
+        document.getElementById("m-note").value = "";
+        setTimeout(() => document.getElementById("m-kg").focus(), 100);
+      }
+      function closeModal(e) {
+        if (e && e.target !== document.getElementById("modalOverlay")) return;
+        document.getElementById("modalOverlay").classList.remove("open");
+      }
 
-// ══════════════════════════════════════════════════
-// DATE LABELS
-// ══════════════════════════════════════════════════
-function setDateLabels(){
-  const d=new Date();
-  const opts={weekday:'long',year:'numeric',month:'long',day:'numeric'};
-  const str=d.toLocaleDateString('th-TH',opts);
-  const el1=document.getElementById('db-date');
-  const el2=document.getElementById('today-date');
-  if(el1) el1.textContent=str;
-  if(el2) el2.textContent=str;
-}
+      // ══════════════════════════════════════════════════
+      // DATE LABELS
+      // ══════════════════════════════════════════════════
+      function setDateLabels() {
+        const d = new Date();
+        const opts = {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        };
+        const str = d.toLocaleDateString("th-TH", opts);
+        const el1 = document.getElementById("db-date");
+        const el2 = document.getElementById("today-date");
+        if (el1) el1.textContent = str;
+        if (el2) el2.textContent = str;
+      }
 
-// ══════════════════════════════════════════════════
-// RENDER ALL
-// ══════════════════════════════════════════════════
-function renderAll(){
-  renderScore();
-  renderNextTask();
-  renderDashStats();
-  renderRecs();
-  renderChecklist('db-checkPreview',6);
-  renderChecklist('todayChecklist');
-  renderCheckStats();
-  renderWeightTable();
-  renderDailyPlan();
-  renderTodayWorkout();
-  renderAchievements();
-}
+      // ══════════════════════════════════════════════════
+      // RENDER ALL
+      // ══════════════════════════════════════════════════
+      function renderAll() {
+        renderScore();
+        renderNextTask();
+        renderDashStats();
+        renderRecs();
+        renderChecklist("db-checkPreview", 6);
+        renderChecklist("todayChecklist");
+        renderCheckStats();
+        renderWeightTable();
+        renderDailyPlan();
+        renderTodayWorkout();
+        renderAchievements();
+      }
 
-// ══════════════════════════════════════════════════
-// INIT
-// ══════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded',()=>{
-  setDateLabels();
-  // Restore goals
-  const g=loadGoals();
-  if(g.start) document.getElementById('startInput').value=g.start;
-  if(g.goal)  document.getElementById('goalInput').value=g.goal;
-  // Default date in weight form
-  document.getElementById('wDate').value=TODAY;
-  calcShake();
-  renderAll();
-});
-</script>
-</body>
+      // ══════════════════════════════════════════════════
+      // INIT
+      // ══════════════════════════════════════════════════
+      document.addEventListener("DOMContentLoaded", () => {
+        setDateLabels();
+        // Restore goals
+        const g = loadGoals();
+        if (g.start) document.getElementById("startInput").value = g.start;
+        if (g.goal) document.getElementById("goalInput").value = g.goal;
+        // Default date in weight form
+        document.getElementById("wDate").value = TODAY;
+        calcShake();
+        renderAll();
+      });
+    </script>
+  </body>
 </html>
-
